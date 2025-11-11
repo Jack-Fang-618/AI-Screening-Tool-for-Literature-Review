@@ -21,10 +21,21 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 # ===== Configuration =====
 
-# Get backend URL from environment variable or use default for local dev
-BACKEND_URL = os.getenv('BACKEND_URL', 'http://localhost:8000')
+# Get backend URL from Streamlit secrets, environment variable, or use default for local dev
+# Priority: 1. Streamlit secrets, 2. Environment variable, 3. Default localhost
+try:
+    # Try Streamlit secrets first (for Streamlit Cloud)
+    BACKEND_URL = st.secrets.get("BACKEND_URL", None)
+    if BACKEND_URL:
+        print(f"🔗 Backend URL (from Streamlit secrets): {BACKEND_URL}")
+except (FileNotFoundError, KeyError):
+    # Fall back to environment variable or default
+    BACKEND_URL = os.getenv('BACKEND_URL', 'http://localhost:8000')
+    print(f"🔗 Backend URL (from environment): {BACKEND_URL}")
 
-print(f"🔗 Backend URL: {BACKEND_URL}")
+if not BACKEND_URL:
+    BACKEND_URL = 'http://localhost:8000'
+    print(f"🔗 Backend URL (default): {BACKEND_URL}")
 
 # ===== Import Frontend Components =====
 
