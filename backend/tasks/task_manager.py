@@ -575,5 +575,8 @@ class TaskManager:
         logger.info(f"🗑️  Cleaned up task {task_id} from memory and checkpoint files")
 
 
-# Global task manager instance
-task_manager = TaskManager(use_database=True)
+# Global task manager instance with checkpoint support
+task_manager = TaskManager(
+    checkpoint_dir=Path("data/checkpoints"),
+    use_database=True
+)

@@ -17,7 +17,7 @@ from pathlib import Path
 
 from ..core.screener import AIScreener, ScreeningConfig, ScreeningResult, ArticleDecision
 from ..services.grok_client import GrokClient
-from ..tasks.task_manager import TaskManager, TaskStatus
+from ..tasks.task_manager import task_manager, TaskStatus
 
 # Database imports
 from ..db import get_db_session
@@ -28,8 +28,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# Initialize task manager for async screening (now with database support)
-task_manager = TaskManager(checkpoint_dir=Path("data/checkpoints"), use_database=True)
+# Use global task manager instance (configured in backend/tasks/task_manager.py)
 
 # Legacy screening tasks storage (for backward compatibility during migration)
 screening_tasks: Dict[str, Dict] = {}
