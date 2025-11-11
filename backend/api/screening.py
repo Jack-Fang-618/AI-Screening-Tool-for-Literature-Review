@@ -423,6 +423,21 @@ async def get_screening_results(task_id: str, db: Session = Depends(get_db_sessi
                     total_confidence += (db_result.confidence or 0.0)
                 
                 # Build summary
+                # Safely get metadata dict (handle SQLAlchemy JSON type)
+                metadata_dict = {}
+                if db_task.metadata:
+                    try:
+                        # If metadata is already a dict
+                        if isinstance(db_task.metadata, dict):
+                            metadata_dict = db_task.metadata
+                        # If metadata is a string (JSON), parse it
+                        elif isinstance(db_task.metadata, str):
+                            import json
+                            metadata_dict = json.loads(db_task.metadata)
+                    except Exception as meta_err:
+                        logger.warning(f"⚠️ Failed to parse metadata: {meta_err}")
+                        metadata_dict = {}
+                
                 summary = {
                     'total_articles': db_task.processed_items,
                     'relevant': db_task.included_count or 0,
@@ -431,7 +446,7 @@ async def get_screening_results(task_id: str, db: Session = Depends(get_db_sessi
                     'errors': db_task.error_count or 0,
                     'needs_manual_review': db_task.manual_review_count or 0,
                     'avg_confidence': total_confidence / len(db_results) if db_results else 0.0,
-                    'model_used': db_task.metadata.get('model', 'unknown') if db_task.metadata else 'unknown',
+                    'model_used': metadata_dict.get('model', 'unknown'),
                     'provider_used': 'grok'
                 }
                 
