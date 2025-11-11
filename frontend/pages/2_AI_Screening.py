@@ -445,11 +445,12 @@ def main():
             if ds['dataset_id'] in st.session_state.my_dataset_ids
         ]
         
-        # Filter 2: From my datasets, show only cleaned/processed datasets (merged or manual_review)
-        # Exclude raw uploads (individual PubMed, Scopus, WoS files)
+        # Filter 2: From my datasets, show only cleaned/processed datasets
+        # Include: merged, deduplicated, manual_review
+        # Exclude: raw uploads (individual PubMed, Scopus, WoS files)
         available_datasets = [
             ds for ds in my_datasets
-            if ds.get('file_type') in ['merged', 'manual_review'] or
+            if ds.get('file_type') in ['merged', 'deduplicated', 'manual_review'] or
                'merged' in ds.get('filename', '').lower() or
                'clean' in ds.get('filename', '').lower() or
                'deduplicated' in ds.get('filename', '').lower()
@@ -538,6 +539,8 @@ def main():
         # Add type indicator
         if file_type == 'merged':
             type_label = "🔗 Merged"
+        elif file_type == 'deduplicated':
+            type_label = "✨ Cleaned"
         elif file_type == 'manual_review':
             type_label = "👁️ Review"
         elif 'clean' in filename.lower() or 'deduplicated' in filename.lower():
@@ -683,20 +686,18 @@ def main():
         num_workers = st.slider(
             "Parallel Workers",
             min_value=1,
-            max_value=50,
-            value=30,
-            help="Number of concurrent workers. Conservative setting with safety margin. Recommended: 20-30 workers"
+            max_value=16,
+            value=8,
+            help="Number of concurrent workers. Recommended range for stability: 8-16 workers. Higher values may cause SSL connection errors."
         )
         
         # Dynamic caption based on worker count
-        if num_workers <= 8:
-            st.caption(f"⚠️ Low: ~{num_workers * 20} articles/hour. Consider increasing for faster processing.")
-        elif num_workers <= 20:
-            st.caption(f"✓ Moderate: ~{num_workers * 20} articles/hour")
-        elif num_workers <= 35:
-            st.caption(f"✓ Recommended: ~{num_workers * 20} articles/hour (stable, safe margin)")
+        if num_workers <= 10:
+            st.caption(f"✓ Stable: ~{num_workers * 20} articles/hour. Minimal connection errors.")
+        elif num_workers <= 14:
+            st.caption(f"✓ Balanced: ~{num_workers * 20} articles/hour. Good speed with acceptable stability.")
         else:
-            st.caption(f"⚡ High: ~{num_workers * 20} articles/hour (approaching rate limits, may throttle)")
+            st.caption(f"⚡ Fast: ~{num_workers * 20} articles/hour. Maximum safe speed, monitor for errors.")
     
     st.markdown("---")
     

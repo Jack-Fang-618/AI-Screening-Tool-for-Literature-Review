@@ -135,7 +135,7 @@ class DataCleanupTask:
             old_failed_tasks = db.query(Task).filter(
                 and_(
                     Task.status == 'FAILED',
-                    Task.updated_at < failed_cutoff
+                    Task.completed_at < failed_cutoff
                 )
             ).all()
             

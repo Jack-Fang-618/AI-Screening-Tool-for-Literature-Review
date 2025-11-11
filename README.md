@@ -25,7 +25,7 @@
 ### Core Workflows (✅ All Complete)
 
 1. **📊 Data Management**: Upload, merge, clean, and deduplicate articles from multiple database exports
-2. **🤖 AI Screening**: Parallel AI-powered screening with up to 50 concurrent workers (processes 5,000 articles in ~10-30 min)
+2. **🤖 AI Screening**: Parallel AI-powered screening with 8-16 concurrent workers (processes 5,000 articles in ~30-60 min)
 3. **📈 Results & Export**: Interactive results table, filtering, and multi-format export with full abstracts
 
 ### Key Features
@@ -33,7 +33,7 @@
 ✅ **Multi-format Support**: Excel (.xlsx, .xls), CSV, RIS files
 ✅ **Intelligent Field Mapping**: LLM-powered auto-detection and standardization of fields
 ✅ **Smart Deduplication**: 5-stage process with DOI matching, title similarity, and metadata validation
-✅ **Parallel AI Screening**: Up to 50× faster processing with checkpoint/resume support
+✅ **Parallel AI Screening**: 8-16× faster processing with checkpoint/resume support
 ✅ **Cost Tracking**: Real-time token usage and cost estimation with HKD pricing
 ✅ **Database Persistence**: SQLite with SQLAlchemy ORM - all data persists across restarts
 ✅ **Interactive Results**: Filter by decision, confidence, search across title/abstract/reasoning
@@ -191,7 +191,7 @@ python start_frontend.py
 └────────┬────────┘
          ↓
 ┌─────────────────┐
-│ 5. AI Screening │ ← Parallel processing (8 workers)
+│ 5. AI Screening │ ← Parallel processing (8-16 workers)
 └────────┬────────┘
          ↓
 ┌─────────────────┐
@@ -268,7 +268,7 @@ python start_frontend.py
 
 **Performance:**
 
-- 5,000 articles in ~30 minutes (8 parallel workers)
+- 5,000 articles in ~30-60 minutes (8-16 parallel workers)
 - Token tracking: input, output, reasoning, cached tokens
 - Cost breakdown: Input, cached, output, reasoning costs
 
@@ -402,20 +402,20 @@ XAI_API_KEY=your_api_key_here  # Get from https://console.x.ai/
 
 ### Benchmarks (Actual Performance)
 
-| Dataset Size | Upload | Merge | Deduplicate | Screen (30 workers) | Screen (50 workers) | Total (50 workers) |
-| ------------ | ------ | ----- | ----------- | ------------------- | ------------------- | ------------------ |
-| 100          | <1s    | 1s    | 2s          | 15s                 | 10s                 | ~15s               |
-| 500          | 1s     | 2s    | 8s          | 1.5 min             | 1 min               | ~2 min             |
-| 1,000        | 2s     | 3s    | 15s         | 2.5 min             | 2 min               | ~3 min             |
-| 5,000        | 5s     | 10s   | 60s         | 12 min              | 10 min              | ~12 min            |
+| Dataset Size | Upload | Merge | Deduplicate | Screen (8 workers) | Screen (16 workers) | Total (16 workers) |
+| ------------ | ------ | ----- | ----------- | ------------------ | ------------------- | ------------------ |
+| 100          | <1s    | 1s    | 2s          | 30s                | 15s                 | ~20s               |
+| 500          | 1s     | 2s    | 8s          | 3 min              | 1.5 min             | ~3 min             |
+| 1,000        | 2s     | 3s    | 15s         | 5 min              | 3 min               | ~5 min             |
+| 5,000        | 5s     | 10s   | 60s         | 30 min             | 15 min              | ~20 min            |
 
 **Notes:**
 
 - Screening time depends on abstract length, AI model, and worker count
-- grok-4-fast-reasoning: ~0.06s per article (50 parallel workers)
+- grok-4-fast-reasoning: ~0.06s per article (with network overhead)
 - Checkpoint every 100 articles for resume support
 - Cost: ~HKD 0.05 per article (varies by model)
-- Worker count configurable: 8-50 workers (default 30)
+- Worker count configurable: 8-16 workers (default 8, recommended for stability)
 
 ### System Requirements
 
@@ -470,7 +470,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - ✅ Multi-format file upload (Excel, CSV, RIS)
 - ✅ LLM-powered field mapping
 - ✅ Smart 5-stage deduplication with metadata validation
-- ✅ Parallel AI screening (up to 50 workers, checkpoint/resume)
+- ✅ Parallel AI screening (8-16 workers, checkpoint/resume)
 - ✅ Real-time cost tracking with HKD pricing
 - ✅ Interactive results page with filtering and search
 - ✅ Full export with abstracts (CSV format)

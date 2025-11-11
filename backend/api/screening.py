@@ -826,6 +826,8 @@ def _run_screening_task(
             
             # Check for cancellation
             if task_manager.is_cancelled(task_id):
+                logger.warning(f"🛑 Task {task_id} cancelled - requesting screener to stop")
+                screener.request_cancel()
                 raise InterruptedError("Task cancelled by user")
         
         # Run screening

@@ -769,6 +769,20 @@ async def list_datasets(db: Session = Depends(get_db_session)):
     # Get from database
     db_datasets = db.query(Dataset).all()
     for dataset in db_datasets:
+        # Determine file_type based on status and attributes
+        if dataset.is_merged:
+            file_type = 'merged'
+        elif dataset.status == DatasetStatus.DEDUPLICATED:
+            # Check if it's a manual review dataset
+            if 'manual_review' in (dataset.name or '').lower():
+                file_type = 'manual_review'
+            else:
+                file_type = 'deduplicated'
+        elif dataset.file_format:
+            file_type = dataset.file_format
+        else:
+            file_type = 'unknown'
+        
         dataset_list.append(
             DatasetInfo(
                 dataset_id=dataset.id,
@@ -776,7 +790,7 @@ async def list_datasets(db: Session = Depends(get_db_session)):
                 upload_time=dataset.created_at.isoformat(),
                 record_count=dataset.total_records,
                 columns=dataset.columns or [],
-                file_type=dataset.file_format or 'unknown'
+                file_type=file_type
             )
         )
     

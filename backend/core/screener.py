@@ -150,9 +150,15 @@ class AIScreener:
         self.llm_client = llm_client
         self.config = config
         self.checkpoint_dir = checkpoint_dir
+        self._cancel_requested = False  # Cancellation flag
         
         if checkpoint_dir:
             checkpoint_dir.mkdir(parents=True, exist_ok=True)
+    
+    def request_cancel(self):
+        """Request cancellation of ongoing screening"""
+        self._cancel_requested = True
+        logger.warning("🛑 Cancellation requested for screener")
     
     def create_screening_prompt(self, title: str, abstract: str) -> str:
         """
@@ -290,6 +296,10 @@ Confidence: [0.0-1.0]"""
         Returns:
             ArticleDecision with screening result
         """
+        # Check for cancellation before starting
+        if self._cancel_requested:
+            raise InterruptedError("Screening cancelled by user")
+        
         prompt = self.create_screening_prompt(title, abstract)
         
         for attempt in range(max_retries):
