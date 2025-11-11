@@ -315,7 +315,8 @@ def main():
         
         with col4:
             st.markdown('<div class="metric-card metric-card-cost">', unsafe_allow_html=True)
-            cost = status.get('total_cost', 0)
+            # Status API returns 'current_cost', not 'total_cost'
+            cost = status.get('current_cost', 0)
             st.metric("Total Cost", f"HKD ${cost:.2f}")
             st.markdown('</div>', unsafe_allow_html=True)
         
