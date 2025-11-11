@@ -193,19 +193,26 @@ class APIClient:
         response.raise_for_status()
         return response.json()
     
-    def auto_map_fields(self, dataset_id: str) -> Dict:
+    def auto_map_fields(self, dataset_id: str, api_key: Optional[str] = None) -> Dict:
         """
-        Auto-detect database source and map fields to standard schema
+        Auto-detect database source and suggest field mappings using LLM
         
         Args:
             dataset_id: Dataset ID
+            api_key: User's XAI API key for LLM mapping
             
         Returns:
             Dict with detected_database, confidence, mappings, unmapped_fields
         """
+        import streamlit as st
+        
+        # Get API key from session if not provided
+        if not api_key and hasattr(st, 'session_state') and 'xai_api_key' in st.session_state:
+            api_key = st.session_state.xai_api_key
+        
         response = self.session.post(
             f"{self.base_url}/api/data/auto-map",
-            json={'dataset_id': dataset_id}
+            json={'dataset_id': dataset_id, 'api_key': api_key}
         )
         response.raise_for_status()
         return response.json()

@@ -75,7 +75,8 @@ class DataMerger:
             add_source_column: Add 'data_source' column to track provenance
         """
         self.field_mapper = field_mapper or FieldMapper()  # Keep for backward compatibility
-        self.llm_field_mapper = LLMFieldMapper()  # NEW: Use LLM for intelligent mapping
+        # LLM Field Mapper: Will be created on-demand with user's API key (not here)
+        self.llm_field_mapper = None  # Initialized when needed
         self.conflict_strategy = conflict_strategy
         self.add_source_column = add_source_column
     

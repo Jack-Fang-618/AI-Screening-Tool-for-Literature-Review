@@ -19,16 +19,19 @@ import time
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
+# Load environment variables from .env file (optional for deployment)
 # Path: backend/main.py -> backend/ -> Core function/ -> .env
 env_path = Path(__file__).parent.parent / '.env'
 if env_path.exists():
     load_dotenv(env_path)
     print(f"✅ Loaded environment variables from {env_path}")
     import os
-    print(f"🔑 XAI_API_KEY loaded: {bool(os.getenv('XAI_API_KEY'))}")
+    api_key_status = "configured" if os.getenv('XAI_API_KEY') else "not set"
+    print(f"🔑 XAI_API_KEY: {api_key_status}")
 else:
-    print(f"⚠️  No .env file found at {env_path}")
+    # No .env file - this is normal for cloud deployment
+    # Users will provide API keys via UI
+    print("ℹ️  Running in cloud mode - users will provide API keys via UI")
 
 # Import API routers
 from backend.api import data_management, screening, results

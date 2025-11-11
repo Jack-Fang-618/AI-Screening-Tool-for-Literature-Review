@@ -19,33 +19,31 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 # ===== Start FastAPI Backend in Background Thread =====
 
-backend_started = False
-
 def start_backend():
     """Start FastAPI backend server in a separate thread"""
-    global backend_started
     try:
         from backend.main import app
+        import uvicorn
         
         # Run uvicorn in the background
         uvicorn.run(
             app,
-            host="0.0.0.0",
+            host="127.0.0.1",
             port=8000,
-            log_level="warning"  # Reduce noise in logs
+            log_level="error"  # Only show errors
         )
     except Exception as e:
-        st.error(f"❌ Backend startup failed: {e}")
-        backend_started = False
+        print(f"❌ Backend startup failed: {e}")
 
-# Start backend only once
-if not backend_started:
-    backend_thread = threading.Thread(target=start_backend, daemon=True)
-    backend_thread.start()
-    backend_started = True
+# Initialize backend in session state (only start once per session)
+if 'backend_thread' not in st.session_state:
+    st.session_state.backend_thread = threading.Thread(target=start_backend, daemon=True)
+    st.session_state.backend_thread.start()
+    st.session_state.backend_started = time.time()
     
-    # Give backend time to start
-    time.sleep(3)
+# Wait for backend to be ready
+if 'backend_ready' not in st.session_state:
+    st.session_state.backend_ready = False
 
 
 # ===== Import and Run Streamlit Frontend =====
@@ -106,14 +104,49 @@ st.markdown("""
 def check_backend_health():
     """Check if backend is responding"""
     try:
-        response = st.session_state.api_client.get_health()
-        return response.get("status") == "healthy"
+        import requests
+        response = requests.get("http://localhost:8000/health", timeout=2)
+        return response.status_code == 200
     except:
         return False
+
+def wait_for_backend(max_wait=10):
+    """Wait for backend to start, with timeout"""
+    if st.session_state.backend_ready:
+        return True
+    
+    elapsed = time.time() - st.session_state.backend_started
+    if elapsed > max_wait:
+        return False
+    
+    if check_backend_health():
+        st.session_state.backend_ready = True
+        return True
+    
+    return False
 
 # Main App
 def main():
     """Main application entry point"""
+    
+    # Check backend status
+    if not wait_for_backend():
+        st.warning("⏳ Backend is starting up... This may take a few seconds on first load.")
+        st.info(f"Elapsed: {int(time.time() - st.session_state.backend_started)}s")
+        
+        # Add retry button
+        if st.button("🔄 Retry Connection"):
+            st.rerun()
+        
+        # Auto-refresh every 2 seconds
+        time.sleep(2)
+        st.rerun()
+        return
+    
+    # Show success message briefly
+    if not st.session_state.get('welcomed', False):
+        st.success("✅ System Ready!")
+        st.session_state.welcomed = True
     
     # Check if user needs to configure API key
     if not st.session_state.xai_api_key:
@@ -154,14 +187,6 @@ def main():
     # Header
     st.markdown('<h1 class="main-header">🔬 AI Screening Tool for Literature Review</h1>', unsafe_allow_html=True)
     st.markdown("**AI-Powered Systematic Review Assistant**")
-    
-    # Backend health check
-    if not check_backend_health():
-        st.warning("⏳ Backend is starting up... This may take a few seconds on first load.")
-        time.sleep(2)
-        st.rerun()
-    else:
-        st.success("✅ System Ready")
     
     st.markdown("---")
     

@@ -38,10 +38,33 @@ datasets_storage: Dict[str, Dict] = {}
 # Initialize processors
 data_processor = DataProcessor()
 field_mapper = FieldMapper()
-llm_field_mapper = LLMFieldMapper()  # NEW: LLM-based intelligent mapper
+# LLM Field Mapper: Created on-demand with user's API key (not initialized here)
 data_merger = DataMerger(field_mapper=field_mapper)
 deduplicator = Deduplicator()  # Legacy deduplicator (keep for compatibility)
 smart_deduplicator = SmartDeduplicator()  # NEW: Intelligent deduplicator with manual review
+
+
+# Helper to create LLM mapper with user's API key
+def get_llm_field_mapper(api_key: Optional[str] = None) -> Optional[LLMFieldMapper]:
+    """
+    Create LLM Field Mapper with user's API key
+    
+    Args:
+        api_key: User's XAI API key (from session/request)
+        
+    Returns:
+        LLMFieldMapper instance or None if no API key
+    """
+    if api_key:
+        return LLMFieldMapper(api_key=api_key)
+    
+    # Try to get from environment (for local development)
+    import os
+    env_key = os.getenv('XAI_API_KEY')
+    if env_key:
+        return LLMFieldMapper(api_key=env_key)
+    
+    return None
 
 
 # ===== Helper Functions =====
@@ -155,6 +178,7 @@ class FieldMappingRequest(BaseModel):
 class AutoMapRequest(BaseModel):
     """Request model for auto field mapping"""
     dataset_id: str
+    api_key: Optional[str] = None  # User's XAI API key
 
 
 class FieldMappingResponse(BaseModel):
@@ -387,8 +411,16 @@ async def auto_map_fields(request: AutoMapRequest, db: Session = Depends(get_db_
     
     logger.info(f"📊 Sending {sample_rows} sample rows to LLM for content analysis")
     
+    # Get LLM mapper with user's API key
+    llm_mapper = get_llm_field_mapper(request.api_key)
+    if not llm_mapper:
+        raise HTTPException(
+            status_code=400,
+            detail="XAI API key required for LLM-based field mapping. Please provide api_key in request."
+        )
+    
     # Use LLM to analyze and map fields based on both column names AND data content
-    mapping_result = llm_field_mapper.analyze_and_map_fields(
+    mapping_result = llm_mapper.analyze_and_map_fields(
         columns=columns,
         sample_data=sample_data,
         filename=filename
