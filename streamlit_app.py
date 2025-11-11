@@ -218,7 +218,7 @@ def main():
         - Merge datasets
         - Deduplicate
         """)
-        if st.button("Start Data Management", type="primary", use_container_width=True):
+        if st.button("Start Data Management", type="primary", width="stretch"):
             st.switch_page("pages/1_Data_Management.py")
     
     with col2:
@@ -229,7 +229,7 @@ def main():
         - Parallel processing
         - Track progress
         """)
-        if st.button("Start AI Screening", type="primary", use_container_width=True):
+        if st.button("Start AI Screening", type="primary", width="stretch"):
             st.switch_page("pages/2_AI_Screening.py")
     
     with col3:
@@ -240,7 +240,7 @@ def main():
         - Generate reports
         - Export data
         """)
-        if st.button("View Results", type="primary", use_container_width=True):
+        if st.button("View Results", type="primary", width="stretch"):
             st.switch_page("pages/3_Results.py")
     
     st.markdown("---")

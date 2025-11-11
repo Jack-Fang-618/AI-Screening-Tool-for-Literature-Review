@@ -224,7 +224,7 @@ def main():
         
         with col2:
             st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("Save API Key", type="primary", use_container_width=True):
+            if st.button("Save API Key", type="primary", width="stretch"):
                 if new_api_key:
                     if update_env_api_key(new_api_key):
                         st.session_state.settings['xai_api_key'] = new_api_key
@@ -322,7 +322,7 @@ def main():
         col1, col2, col3 = st.columns([2, 1, 1])
         
         with col1:
-            if st.button("Save Default Criteria", type="primary", use_container_width=True):
+            if st.button("Save Default Criteria", type="primary", width="stretch"):
                 st.session_state.settings['inclusion_criteria'] = inclusion_criteria
                 st.session_state.settings['exclusion_criteria'] = exclusion_criteria
                 
@@ -332,13 +332,13 @@ def main():
                     st.error("Failed to save criteria")
         
         with col2:
-            if st.button("Clear All", use_container_width=True):
+            if st.button("Clear All", width="stretch"):
                 st.session_state.settings['inclusion_criteria'] = ''
                 st.session_state.settings['exclusion_criteria'] = ''
                 st.rerun()
         
         with col3:
-            if st.button("Load Example", use_container_width=True):
+            if st.button("Load Example", width="stretch"):
                 st.session_state.settings['inclusion_criteria'] = """- Published in peer-reviewed journals
 - Written in English
 - Focus on adult population (18+ years)
@@ -445,7 +445,7 @@ def main():
         col1, col2 = st.columns([2, 1])
         
         with col1:
-            if st.button("Save Preferences", type="primary", use_container_width=True):
+            if st.button("Save Preferences", type="primary", width="stretch"):
                 st.session_state.settings['default_model'] = default_model
                 st.session_state.settings['default_workers'] = default_workers
                 st.session_state.settings['auto_save'] = auto_save
@@ -456,7 +456,7 @@ def main():
                     st.error("Failed to save preferences")
         
         with col2:
-            if st.button("Reset to Defaults", use_container_width=True):
+            if st.button("Reset to Defaults", width="stretch"):
                 st.session_state.settings = {
                     'xai_api_key': st.session_state.settings.get('xai_api_key', ''),
                     'inclusion_criteria': '',

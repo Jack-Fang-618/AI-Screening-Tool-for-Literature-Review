@@ -97,7 +97,7 @@ def main():
         - Merge and deduplicate
         - Clean and standardize
         """)
-        if st.button("Start Data Management", type="primary", use_container_width=True):
+        if st.button("Start Data Management", type="primary", width="stretch"):
             st.switch_page("pages/1_Data_Management.py")
     
     with col2:
@@ -108,7 +108,7 @@ def main():
         - 8 parallel workers
         - Real-time progress
         """)
-        if st.button("Start AI Screening", type="primary", use_container_width=True):
+        if st.button("Start AI Screening", type="primary", width="stretch"):
             st.switch_page("pages/2_AI_Screening.py")
     
     with col3:
@@ -119,7 +119,7 @@ def main():
         - Export results
         - Analyze statistics
         """)
-        if st.button("View Results", type="primary", use_container_width=True):
+        if st.button("View Results", type="primary", width="stretch"):
             st.switch_page("pages/3_Results.py")
     
     with col4:
@@ -130,7 +130,7 @@ def main():
         - Manage preferences
         - Save templates
         """)
-        if st.button("Open Settings", type="secondary", use_container_width=True):
+        if st.button("Open Settings", type="secondary", width="stretch"):
             st.switch_page("pages/4_Settings.py")
     
     st.markdown("---")

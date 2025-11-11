@@ -223,7 +223,7 @@ def show_progress_tracker():
         with col3:
             status_value = status['status'].upper() if isinstance(status['status'], str) else str(status['status']).upper()
             if status_value == 'RUNNING':
-                if st.button("🛑 Cancel Screening", type="secondary", use_container_width=True):
+                if st.button("🛑 Cancel Screening", type="secondary", width="stretch"):
                     try:
                         api_client.cancel_screening(st.session_state.screening_task_id)
                         st.success("✅ Screening cancelled successfully")
@@ -287,7 +287,7 @@ def show_progress_tracker():
             st.markdown('</div>', unsafe_allow_html=True)
             
             # Detailed cost report button
-            if st.button("📊 View Detailed Cost Report", use_container_width=True):
+            if st.button("📊 View Detailed Cost Report", width="stretch"):
                 try:
                     with st.spinner("Loading detailed cost analysis..."):
                         # Get full results from API
@@ -383,11 +383,11 @@ def show_progress_tracker():
             col1, col2 = st.columns(2)
             
             with col1:
-                if st.button("📋 View Results", type="primary", use_container_width=True):
+                if st.button("📋 View Results", type="primary", width="stretch"):
                     st.switch_page("pages/3_Results.py")
             
             with col2:
-                if st.button("🔄 Start New Screening", use_container_width=True):
+                if st.button("🔄 Start New Screening", width="stretch"):
                     st.session_state.screening_task_id = None
                     st.session_state.screening_in_progress = False
                     st.rerun()
@@ -465,11 +465,11 @@ def main():
         col_nav1, col_nav2 = st.columns(2)
         
         with col_nav1:
-            if st.button("📊 Go to Data Management", type="primary", use_container_width=True):
+            if st.button("📊 Go to Data Management", type="primary", width="stretch"):
                 st.switch_page("pages/1_Data_Management.py")
         
         with col_nav2:
-            if st.button("🔄 Show All Datasets Anyway", use_container_width=True):
+            if st.button("🔄 Show All Datasets Anyway", width="stretch"):
                 # Allow override to show all datasets
                 available_datasets = all_datasets
                 st.session_state.show_process_suggestion = False
@@ -494,7 +494,7 @@ def main():
         col_upload1, col_upload2 = st.columns(2)
         
         with col_upload1:
-            if uploaded_file and st.button("📤 Upload & Continue", type="primary", use_container_width=True):
+            if uploaded_file and st.button("📤 Upload & Continue", type="primary", width="stretch"):
                 with st.spinner("Uploading file..."):
                     try:
                         result = api_client.upload_file(uploaded_file)
@@ -504,7 +504,7 @@ def main():
                         st.error(f"Upload failed: {str(e)}")
         
         with col_upload2:
-            if st.button("📊 Go to Data Management", use_container_width=True):
+            if st.button("📊 Go to Data Management", width="stretch"):
                 st.switch_page("pages/1_Data_Management.py")
         
         return
@@ -602,7 +602,7 @@ def main():
         """)
     
     with col_header2:
-        if st.button("⚙️ Settings", use_container_width=True):
+        if st.button("⚙️ Settings", width="stretch"):
             st.switch_page("pages/4_Settings.py")
     
     col1, col2 = st.columns(2)
@@ -687,7 +687,7 @@ def main():
     # Cost Estimation
     st.markdown("### 4. Cost Estimation")
     
-    if st.button("📊 Calculate Accurate Cost Estimate", type="secondary", use_container_width=True):
+    if st.button("📊 Calculate Accurate Cost Estimate", type="secondary", width="stretch"):
         with st.spinner("Analyzing dataset and calculating cost..."):
             try:
                 # Parse criteria text into lists
@@ -817,7 +817,7 @@ def main():
             "Start Screening",
             type="primary",
             disabled=not can_start,
-            use_container_width=True
+            width="stretch"
         ):
             with st.spinner("Initializing screening task..."):
                 try:
@@ -865,11 +865,11 @@ def main():
                     st.error(f"Failed to start screening: {str(e)}")
     
     with col2:
-        if st.button("Save as Draft", use_container_width=True):
+        if st.button("Save as Draft", width="stretch"):
             st.info("Draft save functionality coming soon!")
     
     with col3:
-        if st.button("Load Template", use_container_width=True):
+        if st.button("Load Template", width="stretch"):
             st.info("Template functionality coming soon!")
     
     # Help section

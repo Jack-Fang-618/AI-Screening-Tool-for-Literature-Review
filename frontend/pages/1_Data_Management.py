@@ -203,7 +203,7 @@ def main():
             with col_header1:
                 st.markdown("**Supported formats**: Excel (.xlsx, .xls), CSV, RIS, NBIB (PubMed/MEDLINE)")
             with col_header2:
-                if st.button("🗑️ Clear All Datasets", type="secondary", use_container_width=True, key="clear_all_datasets"):
+                if st.button("🗑️ Clear All Datasets", type="secondary", width="stretch", key="clear_all_datasets"):
                     if st.session_state.get('confirm_clear_all'):
                         # Actually delete
                         with st.spinner("Deleting all datasets..."):
@@ -244,7 +244,7 @@ def main():
                 st.info(f"{len(uploaded_files)} file(s) selected")
             
             with col2:
-                if st.button("Upload All", type="primary", use_container_width=True):
+                if st.button("Upload All", type="primary", width="stretch"):
                     with st.spinner("Uploading and parsing files..."):
                         upload_results = []
                         
@@ -298,7 +298,7 @@ def main():
                             if preview['records']:
                                 st.dataframe(
                                     pd.DataFrame(preview['records']),
-                                    use_container_width=True,
+                                    width="stretch",
                                     height=200
                                 )
                         except Exception as e:
@@ -356,7 +356,7 @@ def main():
                 st.info(f"📊 {len(selected_for_merge)} datasets selected, {total_records} total records")
                 st.info(f"🤖 AI will automatically analyze and map fields from each dataset to standard schema")
                 
-                if st.button("🔗 Merge Datasets with AI Mapping", type="primary", use_container_width=True):
+                if st.button("🔗 Merge Datasets with AI Mapping", type="primary", width="stretch"):
                     with st.spinner("🤖 AI is analyzing fields and merging datasets..."):
                         try:
                             merge_result = api_client.merge_datasets(
@@ -395,7 +395,7 @@ def main():
         col1, col2, col3 = st.columns(3)
         
         with col1:
-            if st.button("📥 Download as CSV", use_container_width=True):
+            if st.button("📥 Download as CSV", width="stretch"):
                 try:
                     with st.spinner("Preparing CSV file..."):
                         csv_data = api_client.export_dataset(st.session_state.merged_dataset_id, format='csv')
@@ -404,13 +404,13 @@ def main():
                             data=csv_data,
                             file_name=f"merged_dataset_{st.session_state.merge_result['total_records']}_records.csv",
                             mime="text/csv",
-                            use_container_width=True
+                            width="stretch"
                         )
                 except Exception as e:
                     st.error(f"Export failed: {str(e)}")
         
         with col2:
-            if st.button("📥 Download as Excel", use_container_width=True):
+            if st.button("📥 Download as Excel", width="stretch"):
                 try:
                     with st.spinner("Preparing Excel file..."):
                         excel_data = api_client.export_dataset(st.session_state.merged_dataset_id, format='excel')
@@ -419,7 +419,7 @@ def main():
                             data=excel_data,
                             file_name=f"merged_dataset_{st.session_state.merge_result['total_records']}_records.xlsx",
                             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                            use_container_width=True
+                            width="stretch"
                         )
                 except Exception as e:
                     st.error(f"Export failed: {str(e)}")
@@ -495,7 +495,7 @@ def main():
                     help="Records with shorter abstracts will be removed"
                 )
             
-            if st.button("🚀 Start Smart Deduplication", type="primary", use_container_width=True):
+            if st.button("🚀 Start Smart Deduplication", type="primary", width="stretch"):
                 with st.spinner("Running intelligent deduplication... This may take a few minutes."):
                     try:
                         dedup_result = api_client.smart_deduplicate(
@@ -605,7 +605,7 @@ def main():
                     
                     with col_r1:
                         # Download review list as CSV
-                        if st.button("📥 Download Review List (CSV)", use_container_width=True, key="dl_csv_review"):
+                        if st.button("📥 Download Review List (CSV)", width="stretch", key="dl_csv_review"):
                             try:
                                 csv_data = api_client.export_dataset(
                                     dedup_result['review_dataset_id'],
@@ -616,14 +616,14 @@ def main():
                                     data=csv_data,
                                     file_name=f"manual_review_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
                                     mime="text/csv",
-                                    use_container_width=True
+                                    width="stretch"
                                 )
                             except Exception as e:
                                 st.error(f"Export failed: {e}")
                     
                     with col_r2:
                         # Download review list as Excel
-                        if st.button("📥 Download Review List (Excel)", use_container_width=True, key="dl_excel_review"):
+                        if st.button("📥 Download Review List (Excel)", width="stretch", key="dl_excel_review"):
                             try:
                                 excel_data = api_client.export_dataset(
                                     dedup_result['review_dataset_id'],
@@ -634,7 +634,7 @@ def main():
                                     data=excel_data,
                                     file_name=f"manual_review_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
                                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                                    use_container_width=True
+                                    width="stretch"
                                 )
                             except Exception as e:
                                 st.error(f"Export failed: {e}")
@@ -646,7 +646,7 @@ def main():
                                 dedup_result['review_dataset_id'],
                                 limit=10
                             )
-                            st.dataframe(review_preview['records'], use_container_width=True)
+                            st.dataframe(review_preview['records'], width="stretch")
                             st.caption(f"Showing first 10 of {review_preview['total_records']} pairs")
                         except Exception as e:
                             st.error(f"Preview failed: {e}")
@@ -674,7 +674,7 @@ def main():
                 col1, col2 = st.columns(2)
                 
                 with col1:
-                    if st.button("📥 Export Clean Dataset", use_container_width=True, key="export_clean_btn"):
+                    if st.button("📥 Export Clean Dataset", width="stretch", key="export_clean_btn"):
                         try:
                             # Export the deduplicated dataset
                             clean_data = api_client.export_dataset(
@@ -686,7 +686,7 @@ def main():
                                 data=clean_data,
                                 file_name=f"clean_dataset_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
                                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                                use_container_width=True
+                                width="stretch"
                             )
                         except Exception as e:
                             st.error(f"Export failed: {str(e)}")
@@ -696,7 +696,7 @@ def main():
                     screening_btn = st.button(
                         "🤖 Start AI Screening →", 
                         type="primary", 
-                        use_container_width=True,
+                        width="stretch",
                         key="start_screening_btn"
                     )
                     

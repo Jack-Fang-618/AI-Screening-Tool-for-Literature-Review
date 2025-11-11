@@ -168,12 +168,12 @@ def main():
             
             col1, col2 = st.columns(2)
             with col1:
-                if st.button("📊 Load Selected Task", type="primary", use_container_width=True):
+                if st.button("📊 Load Selected Task", type="primary", width="stretch"):
                     st.session_state.selected_task_id = task_options[selected_label]
                     st.rerun()
             
             with col2:
-                if st.button("🔬 Go to AI Screening", use_container_width=True):
+                if st.button("🔬 Go to AI Screening", width="stretch"):
                     st.switch_page("pages/2_AI_Screening.py")
         else:
             # No completed tasks - show manual entry
@@ -191,7 +191,7 @@ def main():
             
             with col2:
                 st.markdown("<br>", unsafe_allow_html=True)
-                if st.button("Load Results", type="primary", use_container_width=True):
+                if st.button("Load Results", type="primary", width="stretch"):
                     if task_id_input:
                         st.session_state.selected_task_id = task_id_input
                         st.rerun()
@@ -390,13 +390,13 @@ def main():
                 
                 st.dataframe(
                     display_df,
-                    use_container_width=True,
+                    width="stretch",
                     height=500,
                     column_config=column_config,
                     hide_index=True
                 )
             else:
-                st.dataframe(filtered_df, use_container_width=True, height=500)
+                st.dataframe(filtered_df, width="stretch", height=500)
         else:
             st.info("No results available")
         
@@ -408,7 +408,7 @@ def main():
         col1, col2, col3 = st.columns(3)
         
         with col1:
-            if st.button("📥 Export All (CSV)", type="primary", use_container_width=True):
+            if st.button("📥 Export All (CSV)", type="primary", width="stretch"):
                 if results.get('results'):
                     df_export = pd.DataFrame(results['results'])
                     csv = df_export.to_csv(index=False)
@@ -417,13 +417,13 @@ def main():
                         data=csv,
                         file_name=f"screening_results_{task_id[:8]}.csv",
                         mime="text/csv",
-                        use_container_width=True
+                        width="stretch"
                     )
                 else:
                     st.warning("No results to export")
         
         with col2:
-            if st.button("✅ Export Relevant Only (CSV)", use_container_width=True):
+            if st.button("✅ Export Relevant Only (CSV)", width="stretch"):
                 if results.get('results'):
                     df_export = pd.DataFrame(results['results'])
                     df_relevant = df_export[df_export['decision'] == 'include']
@@ -433,13 +433,13 @@ def main():
                         data=csv,
                         file_name=f"relevant_articles_{task_id[:8]}.csv",
                         mime="text/csv",
-                        use_container_width=True
+                        width="stretch"
                     )
                 else:
                     st.warning("No results to export")
         
         with col3:
-            if st.button("📊 Export Summary (JSON)", use_container_width=True):
+            if st.button("📊 Export Summary (JSON)", width="stretch"):
                 if results.get('summary'):
                     import json
                     summary_json = json.dumps(results['summary'], indent=2)
@@ -448,7 +448,7 @@ def main():
                         data=summary_json,
                         file_name=f"screening_summary_{task_id[:8]}.json",
                         mime="application/json",
-                        use_container_width=True
+                        width="stretch"
                     )
                 else:
                     st.warning("No summary to export")
@@ -483,18 +483,18 @@ def main():
         col1, col2, col3 = st.columns(3)
         
         with col1:
-            if st.button("Start New Screening", use_container_width=True):
+            if st.button("Start New Screening", width="stretch"):
                 st.session_state.selected_task_id = None
                 st.session_state.screening_task_id = None
                 st.session_state.screening_in_progress = False
                 st.switch_page("pages/2_AI_Screening.py")
         
         with col2:
-            if st.button("Back to Data Management", use_container_width=True):
+            if st.button("Back to Data Management", width="stretch"):
                 st.switch_page("pages/1_Data_Management.py")
         
         with col3:
-            if st.button("Clear Results", type="secondary", use_container_width=True):
+            if st.button("Clear Results", type="secondary", width="stretch"):
                 st.session_state.selected_task_id = None
                 st.rerun()
     
