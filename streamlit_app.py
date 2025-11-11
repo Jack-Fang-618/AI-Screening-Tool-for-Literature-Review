@@ -208,7 +208,7 @@ def main():
     # Quick Start Section
     st.markdown("## Quick Start Guide")
     
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3 = st.columns(3)
     
     with col1:
         st.markdown("### 1️⃣ Data Management")
@@ -242,33 +242,6 @@ def main():
         """)
         if st.button("View Results", type="primary", use_container_width=True):
             st.switch_page("pages/3_Results.py")
-    
-    with col4:
-        st.markdown("### ⚙️ Settings")
-        st.markdown("""
-        - Configure API
-        - Set preferences
-        - Manage defaults
-        - Save templates
-        """)
-        if st.button("Open Settings", type="secondary", use_container_width=True):
-            st.switch_page("pages/4_Settings.py")
-    
-    st.markdown("---")
-    
-    # Performance Info
-    st.markdown("## 🚀 Performance")
-    
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.metric("Processing Speed", "10-30 min", "for 5,000 articles")
-    
-    with col2:
-        st.metric("Parallel Workers", "Up to 50", "concurrent processing")
-    
-    with col3:
-        st.metric("Cost", "~HKD 0.05", "per article")
     
     st.markdown("---")
     
