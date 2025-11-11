@@ -25,7 +25,7 @@
 ### Core Workflows (✅ All Complete)
 
 1. **📊 Data Management**: Upload, merge, clean, and deduplicate articles from multiple database exports
-2. **🤖 AI Screening**: Parallel AI-powered screening with 8 concurrent workers (processes 5,000 articles in ~30 min)
+2. **🤖 AI Screening**: Parallel AI-powered screening with up to 50 concurrent workers (processes 5,000 articles in ~10-30 min)
 3. **📈 Results & Export**: Interactive results table, filtering, and multi-format export with full abstracts
 
 ### Key Features
@@ -33,7 +33,7 @@
 ✅ **Multi-format Support**: Excel (.xlsx, .xls), CSV, RIS files  
 ✅ **Intelligent Field Mapping**: LLM-powered auto-detection and standardization of fields  
 ✅ **Smart Deduplication**: 5-stage process with DOI matching, title similarity, and metadata validation  
-✅ **Parallel AI Screening**: 8× faster processing with checkpoint/resume support  
+✅ **Parallel AI Screening**: Up to 50× faster processing with checkpoint/resume support  
 ✅ **Cost Tracking**: Real-time token usage and cost estimation with HKD pricing  
 ✅ **Database Persistence**: SQLite with SQLAlchemy ORM - all data persists across restarts  
 ✅ **Interactive Results**: Filter by decision, confidence, search across title/abstract/reasoning  
@@ -53,8 +53,9 @@
 ### Installation
 
 ```bash
-# 1. Clone or navigate to Core function directory
-cd "AI Scoping review/Core function"
+# 1. Clone repository
+git clone https://github.com/Jack-Fang-618/AI-Screening-Tool-for-Literature-Review.git
+cd AI-Screening-Tool-for-Literature-Review
 
 # 2. Create virtual environment
 python -m venv venv
@@ -379,18 +380,19 @@ XAI_API_KEY=your_api_key_here  # Get from https://console.x.ai/
 
 ### Benchmarks (Actual Performance)
 
-| Dataset Size | Upload | Merge | Deduplicate | Screen (8 workers) | Total |
-|--------------|--------|-------|-------------|-------------------|-------|
-| 100 | <1s | 1s | 2s | 36s | ~40s |
-| 500 | 1s | 2s | 8s | 3 min | ~4 min |
-| 1,000 | 2s | 3s | 15s | 6 min | ~7 min |
-| 5,000 | 5s | 10s | 60s | 30 min | ~32 min |
+| Dataset Size | Upload | Merge | Deduplicate | Screen (30 workers) | Screen (50 workers) | Total (50 workers) |
+|--------------|--------|-------|-------------|---------------------|---------------------|-------------------|
+| 100 | <1s | 1s | 2s | 15s | 10s | ~15s |
+| 500 | 1s | 2s | 8s | 1.5 min | 1 min | ~2 min |
+| 1,000 | 2s | 3s | 15s | 2.5 min | 2 min | ~3 min |
+| 5,000 | 5s | 10s | 60s | 12 min | 10 min | ~12 min |
 
 **Notes:**
-- Screening time depends on abstract length and AI model
-- grok-4-fast-reasoning: ~0.36s per article (8 parallel workers)
+- Screening time depends on abstract length, AI model, and worker count
+- grok-4-fast-reasoning: ~0.06s per article (50 parallel workers)
 - Checkpoint every 100 articles for resume support
 - Cost: ~HKD 0.05 per article (varies by model)
+- Worker count configurable: 8-50 workers (default 30)
 
 ### System Requirements
 
@@ -403,157 +405,9 @@ XAI_API_KEY=your_api_key_here  # Get from https://console.x.ai/
 
 ---
 
-## 🧪 Testing
+##  Contributing
 
-### Available Test Scripts
-
-```bash
-# Test database connection and data integrity
-python check_task_abstracts.py
-
-# Test API endpoints (requires backend running)
-python test_api_abstract.py
-
-# Test Grok API connection
-python test_grok_connection.py
-
-# Test all endpoints
-python test_all_endpoints.py
-
-# Test smart deduplication
-python test_smart_dedup.py
-
-# Test LLM field mapper
-python test_llm_mapper_with_data.py
-```
-
-### Database Management
-
-```bash
-# Initialize database (creates tables)
-python init_db.py
-
-# Reset database (WARNING: deletes all data)
-python init_db.py --reset
-
-# Add test data
-python init_db.py --seed
-
-# Check database health
-python init_db.py --check
-```
-
----
-
-## 🤝 Contributing
-
-### Development Setup
-
-```bash
-# 1. Clone repository
-git clone <repo_url>
-cd "Core function"
-
-# 2. Create virtual environment
-python -m venv venv
-venv\Scripts\activate
-
-# 3. Install dependencies (including dev tools)
-pip install -r requirements.txt
-pip install -r requirements-dev.txt
-
-# 4. Run tests
-pytest
-```
-
-### Code Style
-
-- **PEP 8** compliant
-- **Type hints** for all public functions
-- **Docstrings** for all modules and functions
-- **Max line length**: 100 characters
-
-### Pull Request Process
-
-1. Create feature branch from `main`
-2. Write tests for new features
-3. Ensure all tests pass (`pytest`)
-4. Update documentation
-5. Submit PR with clear description
-
----
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-**Issue: XAI_API_KEY Not Found**
-```
-Error: XAI_API_KEY not set in environment
-```
-**Solution**: 
-1. Create a `.env` file in the project root directory
-2. Add `XAI_API_KEY=your_api_key_here`
-3. Get your API key from https://console.x.ai/
-4. Restart the backend (`python start_backend.py`)
-
----
-
-**Issue: Backend Not Running**
-```
-ConnectionError: [WinError 10061] No connection could be made
-```
-**Solution**:
-1. Check if backend is running on port 8000
-2. Run `python start_all.py` to start both servers
-3. Or run `python start_backend.py` separately
-4. Check terminal for error messages
-
----
-
-**Issue: Database Foreign Key Constraint Failed**
-```
-FOREIGN KEY constraint failed
-```
-**Solution**: 
-- This is fixed in current version
-- Ensure you're using merged/cleaned datasets for screening
-- Database automatically saves datasets during merge/deduplicate operations
-
----
-
-**Issue: Abstracts Missing in Export**
-```
-Abstract column shows None or empty
-```
-**Solution**:
-- Fixed in current version
-- Backend now includes abstracts in all API responses
-- Re-export from Results page to get full abstracts
-
----
-
-**Issue: Slow Screening Performance**
-```
-Estimated time: 5 hours for 5,000 articles
-```
-**Solution**:
-- Verify internet connection speed (need 20+ Mbps for optimal performance)
-- Use `grok-4-fast-reasoning` model (fastest and cheapest)
-- Check if 8 parallel workers are running (default setting)
-- Large abstracts take longer to process
-
----
-
-**Issue: File Upload Fails**
-```
-Error: Unable to parse file
-```
-**Solution**:
-- Supported formats: .xlsx, .xls, .csv, .ris only
-- Verify file is not corrupted (open in Excel first)
-- Check file encoding (UTF-8 recommended for CSV)
-- Ensure file has at least Title and Abstract columns
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 ---
 
@@ -562,15 +416,14 @@ Error: Unable to parse file
 ### Available Guides
 
 - **[REFACTORING_MIGRATION_PLAN.md](docs/REFACTORING_MIGRATION_PLAN.md)**: Detailed migration plan and architecture
-- **[API_REFERENCE.md](docs/API_REFERENCE.md)**: Module API documentation (coming soon)
-- **[USER_GUIDE.md](docs/USER_GUIDE.md)**: Comprehensive user manual (coming soon)
-- **[DEVELOPMENT_GUIDE.md](docs/DEVELOPMENT_GUIDE.md)**: Developer setup guide (coming soon)
+- **[DUAL_LLM_EVALUATION_PLAN.md](docs/DUAL_LLM_EVALUATION_PLAN.md)**: Future dual-LLM evaluation system design
+- **[SETUP.md](docs/SETUP.md)**: Detailed setup and configuration guide
 
 ---
 
 ## 📝 License
 
-[Specify license here - e.g., MIT, GPL, etc.]
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
@@ -598,7 +451,7 @@ Error: Unable to parse file
 - ✅ Multi-format file upload (Excel, CSV, RIS)
 - ✅ LLM-powered field mapping
 - ✅ Smart 5-stage deduplication with metadata validation
-- ✅ Parallel AI screening (8 workers, checkpoint/resume)
+- ✅ Parallel AI screening (up to 50 workers, checkpoint/resume)
 - ✅ Real-time cost tracking with HKD pricing
 - ✅ Interactive results page with filtering and search
 - ✅ Full export with abstracts (CSV format)
@@ -607,6 +460,10 @@ Error: Unable to parse file
 ### Future Versions
 
 **v2.1.0** (Q1 2026)
+- Dual-LLM evaluation system (see [DUAL_LLM_EVALUATION_PLAN.md](docs/DUAL_LLM_EVALUATION_PLAN.md))
+  - Two LLMs discuss and reach consensus on screening decisions
+  - Structured dialogue loop (max 3 rounds) for disagreements
+  - Automatic flagging for human review when needed
 - PRISMA-ScR flow diagram generation
 - Excel export with multiple sheets
 - Manual review interface for flagged articles
@@ -640,5 +497,5 @@ Special thanks to all researchers who provided feedback and testing.
 
 ---
 
-**Last Updated**: November 10, 2025  
+**Last Updated**: November 11, 2025  
 **Version**: 2.0.0 - Core Features Complete ✅
