@@ -79,6 +79,10 @@ coverage.xml
 *.cover
 *.log
 
+# Debug & temporary scripts
+debug_*.py
+replace_*.py
+
 # =============================
 # Streamlit
 # =============================
