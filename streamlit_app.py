@@ -19,51 +19,71 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 # ===== Start FastAPI Backend in Background Thread =====
 
-# Store backend error globally so we can access it from main thread
+# Store backend error and startup log globally
 backend_error = None
+backend_startup_log = []
 
 def start_backend():
     """Start FastAPI backend server in a separate thread"""
-    global backend_error
+    global backend_error, backend_startup_log
+    
     try:
+        backend_startup_log.append("🔧 Starting backend import...")
         print("🔧 Starting backend import...")
-        import sys
-        import io
         
-        # Capture stderr to catch import errors
-        stderr_capture = io.StringIO()
-        old_stderr = sys.stderr
-        sys.stderr = stderr_capture
-        
+        # Try importing backend - this is where most errors occur
         try:
+            backend_startup_log.append("📦 Importing backend.main...")
             from backend.main import app
+            backend_startup_log.append("✅ backend.main imported")
+            
+            backend_startup_log.append("📦 Importing uvicorn...")
             import uvicorn
+            backend_startup_log.append("✅ uvicorn imported")
             
-            # Restore stderr
-            sys.stderr = old_stderr
+        except ImportError as e:
+            error_msg = f"Import Error: {str(e)}"
+            backend_error = error_msg
+            backend_startup_log.append(f"❌ {error_msg}")
+            print(f"❌ Import failed: {e}")
+            import traceback
+            traceback.print_exc()
+            return  # Exit without starting server
             
-            print("✅ Backend imported successfully")
-            print("🚀 Starting uvicorn server on port 8000...")
-            
-            # Run uvicorn in the background
+        except Exception as e:
+            error_msg = f"Unexpected error during import: {str(e)}"
+            backend_error = error_msg
+            backend_startup_log.append(f"❌ {error_msg}")
+            print(f"❌ {error_msg}")
+            import traceback
+            traceback.print_exc()
+            return
+        
+        backend_startup_log.append("✅ All imports successful")
+        backend_startup_log.append("🚀 Starting uvicorn server on port 8000...")
+        print("✅ Backend imported successfully")
+        print("🚀 Starting uvicorn server on port 8000...")
+        
+        # Run uvicorn
+        try:
             uvicorn.run(
                 app,
                 host="127.0.0.1",
                 port=8000,
-                log_level="info"  # Show more logs for debugging
+                log_level="info"
             )
-        except Exception as import_error:
-            # Restore stderr
-            sys.stderr = old_stderr
-            stderr_output = stderr_capture.getvalue()
-            
-            error_msg = f"Import failed: {str(import_error)}\nStderr: {stderr_output}"
-            print(f"❌ {error_msg}")
+        except Exception as e:
+            error_msg = f"Uvicorn startup error: {str(e)}"
             backend_error = error_msg
-            raise
+            backend_startup_log.append(f"❌ {error_msg}")
+            print(f"❌ {error_msg}")
+            import traceback
+            traceback.print_exc()
             
     except Exception as e:
-        backend_error = str(e)
+        error_msg = f"Unexpected top-level error: {str(e)}"
+        backend_error = error_msg
+        backend_startup_log.append(f"❌ {error_msg}")
         print(f"❌ Backend startup failed: {e}")
         import traceback
         traceback.print_exc()
@@ -165,7 +185,7 @@ def main():
     
     # Check if backend thread died
     if not st.session_state.backend_thread.is_alive() and not st.session_state.backend_ready:
-        global backend_error
+        global backend_error, backend_startup_log
         
         st.error("❌ Backend Failed to Start")
         
@@ -179,13 +199,21 @@ def main():
         2. **Database Issues**: SQLite initialization failed
         3. **Import Errors**: Check that all required modules are available
         
-        ### Debug Information:
+        ### Startup Log:
         """)
         
+        # Display startup log
+        if backend_startup_log:
+            st.code("\n".join(backend_startup_log))
+        else:
+            st.warning("No startup log captured")
+        
+        st.markdown("### Debug Information:")
         st.code(f"""
 Thread Status: Dead (exited with error)
 Error Message: {backend_error or 'Not captured'}
 Time Elapsed: {int(time.time() - st.session_state.backend_started)}s
+Log Entries: {len(backend_startup_log)}
         """)
         
         if st.button("🔄 Restart Backend", type="primary"):
@@ -194,6 +222,7 @@ Time Elapsed: {int(time.time() - st.session_state.backend_started)}s
                 if key in st.session_state:
                     del st.session_state[key]
             backend_error = None
+            backend_startup_log.clear()
             st.rerun()
         
         st.stop()
