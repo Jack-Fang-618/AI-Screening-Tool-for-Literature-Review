@@ -23,8 +23,12 @@ from frontend.utils.api_client import APIClient
 # Initialize logger
 logger = logging.getLogger(__name__)
 
-# Initialize API client
-api_client = APIClient()
+# Use API client from session state (initialized in streamlit_app.py with correct backend URL)
+if 'api_client' not in st.session_state:
+    st.error("⚠️ API client not initialized. Please return to home page.")
+    st.stop()
+
+api_client = st.session_state.api_client
 
 # Page configuration
 st.set_page_config(
