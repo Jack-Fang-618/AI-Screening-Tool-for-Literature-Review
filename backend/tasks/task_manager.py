@@ -573,3 +573,7 @@ class TaskManager:
                 checkpoint_file.unlink()
         
         logger.info(f"🗑️  Cleaned up task {task_id} from memory and checkpoint files")
+
+
+# Global task manager instance
+task_manager = TaskManager(use_database=True)
