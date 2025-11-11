@@ -249,9 +249,15 @@ class APIClient:
         Returns:
             Dict with merged_dataset_id, total_records, sources_merged, summary
         """
+        import streamlit as st
+        
         payload = {'dataset_ids': dataset_ids}
         if source_names:
             payload['source_names'] = source_names
+        
+        # Include user's API key for LLM field mapping
+        if hasattr(st, 'session_state') and 'xai_api_key' in st.session_state:
+            payload['api_key'] = st.session_state.xai_api_key
             
         response = self.session.post(
             f"{self.base_url}/api/data/merge",

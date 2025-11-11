@@ -194,6 +194,7 @@ class MergeRequest(BaseModel):
     """Request model for merging datasets"""
     dataset_ids: List[str]
     source_names: Optional[List[str]] = None
+    api_key: Optional[str] = None  # User's API key for LLM field mapping
 
 
 class MergeResponse(BaseModel):
@@ -518,6 +519,25 @@ async def merge_datasets(request: MergeRequest, db: Session = Depends(get_db_ses
     
     Returns unique ID for merged dataset
     """
+    # Check if API key is provided for LLM field mapping
+    if not request.api_key:
+        raise HTTPException(
+            status_code=400,
+            detail="API key is required for intelligent field mapping during merge"
+        )
+    
+    # Create LLM field mapper with user's API key
+    llm_mapper = get_llm_field_mapper(request.api_key)
+    if not llm_mapper:
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to initialize LLM field mapper"
+        )
+    
+    # Create a new data merger instance with the LLM mapper
+    merger = DataMerger(field_mapper=field_mapper)
+    merger.llm_field_mapper = llm_mapper
+    
     # Try database first, then legacy storage
     dataframes = []
     source_names_list = []
@@ -545,7 +565,7 @@ async def merge_datasets(request: MergeRequest, db: Session = Depends(get_db_ses
     logger.info(f"🔗 Merging {len(dataframes)} datasets: {', '.join(source_names_list)}")
     
     # Perform merge
-    merge_result = data_merger.merge_datasets(
+    merge_result = merger.merge_datasets(
         dataframes,
         source_names=source_names_list
     )
