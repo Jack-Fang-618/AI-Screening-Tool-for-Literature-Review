@@ -76,6 +76,7 @@ class StartScreeningRequest(BaseModel):
     confidence_threshold: float = 0.8
     manual_review_threshold: float = 0.6
     limit: Optional[int] = None  # Optional limit for test mode
+    api_key: Optional[str] = None  # User's X.AI API key
 
 
 class ScreeningProgress(BaseModel):
@@ -267,7 +268,8 @@ async def start_screening(
         task_id=task_id,
         df=df,
         config=config,
-        model=request.model
+        model=request.model,
+        api_key=request.api_key
     )
     
     logger.info(f"✅ Created screening task: {task_id}")
@@ -707,6 +709,7 @@ def _run_screening_task(
     df: pd.DataFrame,
     config: ScreeningConfig,
     model: str,
+    api_key: Optional[str] = None,
     resume_from: int = 0
 ):
     """
@@ -717,14 +720,15 @@ def _run_screening_task(
         df: Dataset DataFrame
         config: Screening configuration
         model: Model name
+        api_key: User's X.AI API key
         resume_from: Resume from this item index
     """
     try:
         # Mark task as running
         task_manager.start_task(task_id)
         
-        # Initialize Grok client
-        grok_client = GrokClient(model=model)
+        # Initialize Grok client with user's API key
+        grok_client = GrokClient(model=model, api_key=api_key)
         
         # Initialize screener
         screener = AIScreener(

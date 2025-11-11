@@ -411,6 +411,8 @@ class APIClient:
         limit: Optional[int] = None
     ) -> Dict:
         """Start AI screening task"""
+        import streamlit as st
+        
         payload = {
             'data_id': data_id,
             'criteria': criteria,
@@ -423,6 +425,10 @@ class APIClient:
         # Add limit if provided (for test mode)
         if limit is not None:
             payload['limit'] = limit
+        
+        # Include user's API key
+        if hasattr(st, 'session_state') and 'xai_api_key' in st.session_state:
+            payload['api_key'] = st.session_state.xai_api_key
         
         response = self.session.post(
             f"{self.base_url}/api/screening/start",
