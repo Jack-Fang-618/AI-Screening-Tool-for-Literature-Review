@@ -19,24 +19,51 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 # ===== Start FastAPI Backend in Background Thread =====
 
+# Store backend error globally so we can access it from main thread
+backend_error = None
+
 def start_backend():
     """Start FastAPI backend server in a separate thread"""
+    global backend_error
     try:
         print("🔧 Starting backend import...")
-        from backend.main import app
-        import uvicorn
+        import sys
+        import io
         
-        print("✅ Backend imported successfully")
-        print("🚀 Starting uvicorn server on port 8000...")
+        # Capture stderr to catch import errors
+        stderr_capture = io.StringIO()
+        old_stderr = sys.stderr
+        sys.stderr = stderr_capture
         
-        # Run uvicorn in the background
-        uvicorn.run(
-            app,
-            host="127.0.0.1",
-            port=8000,
-            log_level="info"  # Show more logs for debugging
-        )
+        try:
+            from backend.main import app
+            import uvicorn
+            
+            # Restore stderr
+            sys.stderr = old_stderr
+            
+            print("✅ Backend imported successfully")
+            print("🚀 Starting uvicorn server on port 8000...")
+            
+            # Run uvicorn in the background
+            uvicorn.run(
+                app,
+                host="127.0.0.1",
+                port=8000,
+                log_level="info"  # Show more logs for debugging
+            )
+        except Exception as import_error:
+            # Restore stderr
+            sys.stderr = old_stderr
+            stderr_output = stderr_capture.getvalue()
+            
+            error_msg = f"Import failed: {str(import_error)}\nStderr: {stderr_output}"
+            print(f"❌ {error_msg}")
+            backend_error = error_msg
+            raise
+            
     except Exception as e:
+        backend_error = str(e)
         print(f"❌ Backend startup failed: {e}")
         import traceback
         traceback.print_exc()
@@ -46,6 +73,7 @@ if 'backend_thread' not in st.session_state:
     st.session_state.backend_thread = threading.Thread(target=start_backend, daemon=True)
     st.session_state.backend_thread.start()
     st.session_state.backend_started = time.time()
+    st.session_state.backend_error = None
     
 # Wait for backend to be ready
 if 'backend_ready' not in st.session_state:
@@ -134,6 +162,41 @@ def wait_for_backend(max_wait=30):
 # Main App
 def main():
     """Main application entry point"""
+    
+    # Check if backend thread died
+    if not st.session_state.backend_thread.is_alive() and not st.session_state.backend_ready:
+        global backend_error
+        
+        st.error("❌ Backend Failed to Start")
+        
+        if backend_error:
+            st.error(f"**Error:** {backend_error}")
+        
+        st.markdown("""
+        ### Possible Solutions:
+        
+        1. **Missing Dependencies**: Some packages may not be installed
+        2. **Database Issues**: SQLite initialization failed
+        3. **Import Errors**: Check that all required modules are available
+        
+        ### Debug Information:
+        """)
+        
+        st.code(f"""
+Thread Status: Dead (exited with error)
+Error Message: {backend_error or 'Not captured'}
+Time Elapsed: {int(time.time() - st.session_state.backend_started)}s
+        """)
+        
+        if st.button("🔄 Restart Backend", type="primary"):
+            # Clear session state to restart
+            for key in ['backend_thread', 'backend_started', 'backend_ready', 'backend_error']:
+                if key in st.session_state:
+                    del st.session_state[key]
+            backend_error = None
+            st.rerun()
+        
+        st.stop()
     
     # Check backend status
     if not wait_for_backend():
