@@ -71,23 +71,46 @@ async def lifespan(app: FastAPI):
     """Lifecycle manager for startup and shutdown events"""
     # Startup
     logger.info("🚀 Starting AI Scoping Review Backend Server")
+    
+    # Initialize database if not exists
+    logger.info("🗄️  Initializing database...")
+    try:
+        from backend.db import init_db, engine
+        from backend.models.database import Base
+        
+        # Create all tables
+        Base.metadata.create_all(bind=engine)
+        logger.info("✅ Database initialized")
+    except Exception as e:
+        logger.error(f"❌ Database initialization failed: {e}")
+        # Continue anyway - database is optional for basic functionality
+    
     logger.info("📊 Initializing task manager...")
     from backend.tasks.task_manager import task_manager
     # Task manager automatically loads from database when use_database=True
     logger.info("✅ Task manager initialized")
     
-    # Start automatic data cleanup task
+    # Start automatic data cleanup task (non-blocking)
     logger.info("🧹 Starting automatic data cleanup task...")
-    from backend.tasks.cleanup_task import cleanup_task
-    cleanup_task.start()
-    logger.info("✅ Cleanup task started (runs every 6 hours)")
+    try:
+        from backend.tasks.cleanup_task import cleanup_task
+        cleanup_task.start()
+        logger.info("✅ Cleanup task started (runs every 6 hours)")
+        cleanup_started = True
+    except Exception as e:
+        logger.warning(f"⚠️  Cleanup task failed to start: {e}")
+        cleanup_started = False
     
     yield
     
     # Shutdown
     logger.info("🛑 Shutting down server...")
-    cleanup_task.stop()
-    logger.info("✅ Cleanup task stopped")
+    if cleanup_started:
+        try:
+            cleanup_task.stop()
+            logger.info("✅ Cleanup task stopped")
+        except:
+            pass
 
 
 # Create FastAPI app
@@ -104,12 +127,7 @@ app.add_middleware(RequestLoggingMiddleware)
 # Configure CORS (allow Streamlit frontend to connect)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:8501",  # Streamlit default port
-        "http://127.0.0.1:8501",
-        "http://localhost:8000",  # Allow self for docs
-        "http://127.0.0.1:8000",
-    ],
+    allow_origins=["*"],  # Allow all origins for now (Streamlit Cloud URL is dynamic)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
