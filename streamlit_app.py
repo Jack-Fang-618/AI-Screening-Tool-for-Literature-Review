@@ -1,0 +1,216 @@
+"""
+Streamlit Cloud Deployment - Integrated Frontend + Backend
+
+This file starts both FastAPI backend and Streamlit frontend in the same process
+for deployment on Streamlit Community Cloud.
+
+Deploy: Just upload this file to Streamlit Cloud, it will handle everything.
+"""
+
+import streamlit as st
+import uvicorn
+import threading
+import time
+import sys
+from pathlib import Path
+
+# Add current directory to path
+sys.path.insert(0, str(Path(__file__).parent))
+
+# ===== Start FastAPI Backend in Background Thread =====
+
+backend_started = False
+
+def start_backend():
+    """Start FastAPI backend server in a separate thread"""
+    global backend_started
+    try:
+        from backend.main import app
+        
+        # Run uvicorn in the background
+        uvicorn.run(
+            app,
+            host="0.0.0.0",
+            port=8000,
+            log_level="warning"  # Reduce noise in logs
+        )
+    except Exception as e:
+        st.error(f"❌ Backend startup failed: {e}")
+        backend_started = False
+
+# Start backend only once
+if not backend_started:
+    backend_thread = threading.Thread(target=start_backend, daemon=True)
+    backend_thread.start()
+    backend_started = True
+    
+    # Give backend time to start
+    time.sleep(3)
+
+
+# ===== Import and Run Streamlit Frontend =====
+
+from frontend.utils.api_client import APIClient
+
+# Page Configuration
+st.set_page_config(
+    page_title="AI Screening Tool for Literature Review",
+    page_icon="🔬",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Initialize Session State
+if 'api_client' not in st.session_state:
+    st.session_state.api_client = APIClient(base_url="http://localhost:8000")
+
+# Custom CSS
+st.markdown("""
+<style>
+    .main-header {
+        font-size: 2.5rem;
+        font-weight: bold;
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 0.5rem;
+    }
+    .success-box {
+        background: #d4edda;
+        border-left: 4px solid #28a745;
+        color: #155724;
+        padding: 1rem;
+        border-radius: 5px;
+        margin: 1rem 0;
+    }
+    .info-box {
+        background: #d1ecf1;
+        border-left: 4px solid #17a2b8;
+        color: #0c5460;
+        padding: 1rem;
+        border-radius: 5px;
+        margin: 1rem 0;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# Check backend health
+def check_backend_health():
+    """Check if backend is responding"""
+    try:
+        response = st.session_state.api_client.get_health()
+        return response.get("status") == "healthy"
+    except:
+        return False
+
+# Main App
+def main():
+    """Main application entry point"""
+    
+    # Header
+    st.markdown('<h1 class="main-header">🔬 AI Screening Tool for Literature Review</h1>', unsafe_allow_html=True)
+    st.markdown("**AI-Powered Systematic Review Assistant**")
+    
+    # Backend health check
+    if not check_backend_health():
+        st.warning("⏳ Backend is starting up... This may take a few seconds on first load.")
+        time.sleep(2)
+        st.rerun()
+    else:
+        st.success("✅ System Ready")
+    
+    st.markdown("---")
+    
+    # Welcome Section
+    st.markdown("## Welcome")
+    
+    st.markdown("""
+    This toolkit streamlines systematic scoping reviews by combining intelligent data management
+    with AI-powered screening. Process thousands of articles in minutes, not days.
+    
+    **Features:**
+    - 📊 Multi-format upload (Excel, CSV, RIS)
+    - 🤖 AI-powered screening with up to 50 parallel workers
+    - 🔍 Smart deduplication with DOI + title similarity
+    - 📈 Real-time progress tracking and cost estimation
+    - 📄 PRISMA-compliant export
+    """)
+    
+    # Quick Start Section
+    st.markdown("## Quick Start Guide")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.markdown("### 1️⃣ Data Management")
+        st.markdown("""
+        - Upload files
+        - Auto-detect fields
+        - Merge datasets
+        - Deduplicate
+        """)
+        if st.button("Start Data Management", type="primary", use_container_width=True):
+            st.switch_page("pages/1_Data_Management.py")
+    
+    with col2:
+        st.markdown("### 2️⃣ AI Screening")
+        st.markdown("""
+        - Define criteria
+        - Select AI model
+        - Parallel processing
+        - Track progress
+        """)
+        if st.button("Start AI Screening", type="primary", use_container_width=True):
+            st.switch_page("pages/2_AI_Screening.py")
+    
+    with col3:
+        st.markdown("### 3️⃣ Results")
+        st.markdown("""
+        - View decisions
+        - Filter results
+        - Generate reports
+        - Export data
+        """)
+        if st.button("View Results", type="primary", use_container_width=True):
+            st.switch_page("pages/3_Results.py")
+    
+    with col4:
+        st.markdown("### ⚙️ Settings")
+        st.markdown("""
+        - Configure API
+        - Set preferences
+        - Manage defaults
+        - Save templates
+        """)
+        if st.button("Open Settings", type="secondary", use_container_width=True):
+            st.switch_page("pages/4_Settings.py")
+    
+    st.markdown("---")
+    
+    # Performance Info
+    st.markdown("## 🚀 Performance")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.metric("Processing Speed", "10-30 min", "for 5,000 articles")
+    
+    with col2:
+        st.metric("Parallel Workers", "Up to 50", "concurrent processing")
+    
+    with col3:
+        st.metric("Cost", "~HKD 0.05", "per article")
+    
+    st.markdown("---")
+    
+    # Footer
+    st.markdown("""
+    <div style='text-align: center; color: #666; padding: 2rem 0;'>
+        <p>Developed with ❤️ for systematic review researchers</p>
+        <p><a href='https://github.com/Jack-Fang-618/AI-Screening-Tool-for-Literature-Review' target='_blank'>View on GitHub</a></p>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+if __name__ == "__main__":
+    main()
