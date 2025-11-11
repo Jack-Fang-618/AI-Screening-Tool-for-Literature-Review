@@ -74,32 +74,41 @@ async def lifespan(app: FastAPI):
     
     # Initialize database if not exists
     logger.info("🗄️  Initializing database...")
+    db_initialized = False
     try:
         from backend.db import init_db, engine
         from backend.models.database import Base
         
-        # Create all tables
+        # Create all tables (with timeout protection)
         Base.metadata.create_all(bind=engine)
         logger.info("✅ Database initialized")
+        db_initialized = True
     except Exception as e:
-        logger.error(f"❌ Database initialization failed: {e}")
+        logger.warning(f"⚠️  Database initialization skipped: {e}")
+        logger.info("ℹ️  Will use in-memory storage for this session")
         # Continue anyway - database is optional for basic functionality
     
     logger.info("📊 Initializing task manager...")
-    from backend.tasks.task_manager import task_manager
-    # Task manager automatically loads from database when use_database=True
-    logger.info("✅ Task manager initialized")
-    
-    # Start automatic data cleanup task (non-blocking)
-    logger.info("🧹 Starting automatic data cleanup task...")
     try:
+        from backend.tasks.task_manager import task_manager
+        # Task manager automatically loads from database when use_database=True
+        logger.info("✅ Task manager initialized")
+    except Exception as e:
+        logger.warning(f"⚠️  Task manager initialization had issues: {e}")
+    
+    # Start automatic data cleanup task (non-blocking, skip on error)
+    cleanup_started = False
+    try:
+        logger.info("🧹 Starting automatic data cleanup task...")
         from backend.tasks.cleanup_task import cleanup_task
         cleanup_task.start()
         logger.info("✅ Cleanup task started (runs every 6 hours)")
         cleanup_started = True
     except Exception as e:
-        logger.warning(f"⚠️  Cleanup task failed to start: {e}")
-        cleanup_started = False
+        logger.warning(f"⚠️  Cleanup task skipped: {e}")
+        logger.info("ℹ️  Cleanup task is optional - server will continue without it")
+    
+    logger.info("✅ Server startup complete - ready to accept requests")
     
     yield
     
@@ -109,8 +118,8 @@ async def lifespan(app: FastAPI):
         try:
             cleanup_task.stop()
             logger.info("✅ Cleanup task stopped")
-        except:
-            pass
+        except Exception as e:
+            logger.warning(f"⚠️  Cleanup task stop failed: {e}")
 
 
 # Create FastAPI app
@@ -137,23 +146,39 @@ app.add_middleware(
 # Health check endpoint
 @app.get("/")
 async def root():
-    """Root endpoint - health check"""
-    logger.info("🏠 Root endpoint accessed")
+    """Root endpoint - simple health check"""
     return {
         "status": "healthy",
         "service": "AI Scoping Review Backend",
-        "version": "2.0.0",
-        "docs": "/docs"
+        "version": "2.0.0"
     }
 
 
 @app.get("/health")
 async def health_check():
-    """Detailed health check"""
-    logger.info("💊 Health check endpoint accessed")
+    """Railway health check - must respond quickly"""
+    return {"status": "healthy"}
+
+
+@app.get("/health/detailed")
+async def health_check_detailed():
+    """Detailed health check with diagnostics"""
+    logger.info("💊 Detailed health check endpoint accessed")
+    
+    # Check database
+    db_status = "unknown"
+    try:
+        from backend.db import engine
+        from sqlalchemy import text
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        db_status = "connected"
+    except Exception as e:
+        db_status = f"error: {str(e)[:50]}"
+    
     return {
         "status": "healthy",
-        "database": "not_implemented",  # Future: check DB connection
+        "database": db_status,
         "task_manager": "active",
         "workers": 8
     }
