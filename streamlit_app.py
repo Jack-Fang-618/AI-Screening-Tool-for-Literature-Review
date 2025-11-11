@@ -22,18 +22,24 @@ sys.path.insert(0, str(Path(__file__).parent))
 def start_backend():
     """Start FastAPI backend server in a separate thread"""
     try:
+        print("🔧 Starting backend import...")
         from backend.main import app
         import uvicorn
+        
+        print("✅ Backend imported successfully")
+        print("🚀 Starting uvicorn server on port 8000...")
         
         # Run uvicorn in the background
         uvicorn.run(
             app,
             host="127.0.0.1",
             port=8000,
-            log_level="error"  # Only show errors
+            log_level="info"  # Show more logs for debugging
         )
     except Exception as e:
         print(f"❌ Backend startup failed: {e}")
+        import traceback
+        traceback.print_exc()
 
 # Initialize backend in session state (only start once per session)
 if 'backend_thread' not in st.session_state:
@@ -110,8 +116,8 @@ def check_backend_health():
     except:
         return False
 
-def wait_for_backend(max_wait=10):
-    """Wait for backend to start, with timeout"""
+def wait_for_backend(max_wait=30):
+    """Wait for backend to start, with timeout (30s for cloud cold start)"""
     if st.session_state.backend_ready:
         return True
     
@@ -131,12 +137,50 @@ def main():
     
     # Check backend status
     if not wait_for_backend():
-        st.warning("⏳ Backend is starting up... This may take a few seconds on first load.")
-        st.info(f"Elapsed: {int(time.time() - st.session_state.backend_started)}s")
+        elapsed = int(time.time() - st.session_state.backend_started)
+        
+        st.warning(f"⏳ Backend is starting up... ({elapsed}s elapsed)")
+        
+        # Show different messages based on time
+        if elapsed < 10:
+            st.info("🔧 Loading dependencies and initializing backend...")
+        elif elapsed < 20:
+            st.info("📊 Setting up database and task manager...")
+        else:
+            st.info("⚙️ Almost ready... Starting cleanup task...")
+        
+        # Show progress bar
+        progress = min(elapsed / 30, 1.0)
+        st.progress(progress)
+        
+        # Show debug info in expander
+        with st.expander("🔍 Debug Information"):
+            st.write(f"Backend thread alive: {st.session_state.backend_thread.is_alive()}")
+            st.write(f"Time elapsed: {elapsed}s")
+            st.write(f"Max wait: 30s")
+            
+            # Try to show backend logs if available
+            try:
+                import requests
+                response = requests.get("http://localhost:8000/", timeout=1)
+                st.success(f"✅ Backend responded! Status: {response.status_code}")
+            except requests.exceptions.ConnectionRefusedError:
+                st.warning("⚠️ Backend port 8000 not accepting connections yet")
+            except Exception as e:
+                st.warning(f"⚠️ Connection attempt: {str(e)}")
         
         # Add retry button
-        if st.button("🔄 Retry Connection"):
-            st.rerun()
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("🔄 Retry Connection", use_container_width=True):
+                st.rerun()
+        with col2:
+            if st.button("🔧 Reset Backend", use_container_width=True):
+                # Clear session state to restart backend
+                for key in ['backend_thread', 'backend_started', 'backend_ready']:
+                    if key in st.session_state:
+                        del st.session_state[key]
+                st.rerun()
         
         # Auto-refresh every 2 seconds
         time.sleep(2)
