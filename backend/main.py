@@ -73,7 +73,7 @@ async def lifespan(app: FastAPI):
     logger.info("🚀 Starting AI Scoping Review Backend Server")
     logger.info("📊 Initializing task manager...")
     from backend.tasks.task_manager import task_manager
-    task_manager.load_tasks_from_db()
+    # Task manager automatically loads from database when use_database=True
     logger.info("✅ Task manager initialized")
     
     # Start automatic data cleanup task
