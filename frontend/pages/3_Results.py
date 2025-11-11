@@ -278,14 +278,14 @@ def main():
         # Summary Section
         st.markdown("## Summary")
         
-        # Metrics row
+        # Metrics row - 4 columns for the 4 main metrics
         col1, col2, col3, col4 = st.columns(4)
         
-        # Get counts from status (backend returns included, excluded, manual_review)
-        relevant = status.get('included', 0)
-        irrelevant = status.get('excluded', 0)
-        uncertain = status.get('manual_review', 0)
-        total = status.get('total', 0)
+        # Get counts from status (backend returns included_count, excluded_count, manual_review_count)
+        relevant = status.get('included_count', 0)
+        irrelevant = status.get('excluded_count', 0)
+        uncertain = status.get('manual_review_count', 0)
+        total = status.get('total_items', 0)
         
         with col1:
             st.markdown('<div class="metric-card metric-card-relevant">', unsafe_allow_html=True)
@@ -310,10 +310,8 @@ def main():
         
         with col4:
             st.markdown('<div class="metric-card metric-card-cost">', unsafe_allow_html=True)
-            cost = status.get('current_cost', 0)
+            cost = status.get('total_cost', 0)
             st.metric("Total Cost", f"HKD ${cost:.2f}")
-            elapsed = status.get('elapsed_time', 0)
-            st.caption(f"Time: {format_time(elapsed)}")
             st.markdown('</div>', unsafe_allow_html=True)
         
         st.markdown("---")
