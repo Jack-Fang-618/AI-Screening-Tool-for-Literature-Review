@@ -1,8 +1,8 @@
 # 🔬 AI Scoping Review - Core Function Module
 
-**Version:** 2.0.0  
-**Status:** ✅ Core Features Complete  
-**Architecture:** FastAPI Backend + Streamlit Frontend  
+**Version:** 2.0.0
+**Status:** ✅ Core Features Complete
+**Architecture:** FastAPI Backend + Streamlit Frontend
 **Purpose:** Production-ready toolkit for scoping review data management and AI-powered screening
 
 ---
@@ -16,11 +16,11 @@
 
 ### Why This Architecture?
 
-✅ **Performance**: Async backend handles long-running tasks (screening 5,000 articles in ~30 min)  
-✅ **Scalability**: Support multiple concurrent users  
-✅ **Simplicity**: No complex authentication, just start and use  
-✅ **Real-time Updates**: Frontend polls backend for live progress tracking  
-✅ **Future-proof**: Easy to add features, switch frontends, or deploy to cloud  
+✅ **Performance**: Async backend handles long-running tasks (screening 5,000 articles in ~30 min)
+✅ **Scalability**: Support multiple concurrent users
+✅ **Simplicity**: No complex authentication, just start and use
+✅ **Real-time Updates**: Frontend polls backend for live progress tracking
+✅ **Future-proof**: Easy to add features, switch frontends, or deploy to cloud
 
 ### Core Workflows (✅ All Complete)
 
@@ -30,15 +30,15 @@
 
 ### Key Features
 
-✅ **Multi-format Support**: Excel (.xlsx, .xls), CSV, RIS files  
-✅ **Intelligent Field Mapping**: LLM-powered auto-detection and standardization of fields  
-✅ **Smart Deduplication**: 5-stage process with DOI matching, title similarity, and metadata validation  
-✅ **Parallel AI Screening**: Up to 50× faster processing with checkpoint/resume support  
-✅ **Cost Tracking**: Real-time token usage and cost estimation with HKD pricing  
-✅ **Database Persistence**: SQLite with SQLAlchemy ORM - all data persists across restarts  
-✅ **Interactive Results**: Filter by decision, confidence, search across title/abstract/reasoning  
-✅ **Full Export**: CSV/Excel export with complete abstracts and screening metadata  
-✅ **No Login Required**: Simple, focused workflow for researchers  
+✅ **Multi-format Support**: Excel (.xlsx, .xls), CSV, RIS files
+✅ **Intelligent Field Mapping**: LLM-powered auto-detection and standardization of fields
+✅ **Smart Deduplication**: 5-stage process with DOI matching, title similarity, and metadata validation
+✅ **Parallel AI Screening**: Up to 50× faster processing with checkpoint/resume support
+✅ **Cost Tracking**: Real-time token usage and cost estimation with HKD pricing
+✅ **Database Persistence**: SQLite with SQLAlchemy ORM - all data persists across restarts
+✅ **Interactive Results**: Filter by decision, confidence, search across title/abstract/reasoning
+✅ **Full Export**: CSV/Excel export with complete abstracts and screening metadata
+✅ **No Login Required**: Simple, focused workflow for researchers
 
 ---
 
@@ -81,10 +81,12 @@ echo "XAI_API_KEY=your_api_key_here" > .env
 **Before using the toolkit, download your dataset files from literature databases with ALL necessary metadata:**
 
 #### Required Fields
+
 - **Title**: Article title (essential for screening and deduplication)
 - **Abstract**: Full abstract text (required for AI screening)
 
 #### Recommended Fields (for better deduplication and tracking)
+
 - **Authors**: Author list
 - **Journal**: Publication venue
 - **Year**: Publication year
@@ -94,32 +96,36 @@ echo "XAI_API_KEY=your_api_key_here" > .env
 
 #### Supported Database Export Formats
 
-| Database | Recommended Export Format | Fields to Include |
-|----------|--------------------------|-------------------|
-| **PubMed** | CSV or MEDLINE/PubMed XML (.nbib) | Title (TI), Abstract (AB), Authors (AU), Journal (TA), Year (DP), PMID, DOI |
-| **Scopus** | CSV or RIS | Title, Abstract, Authors, Source title, Year, DOI, Keywords |
-| **Web of Science** | Tab-delimited or Excel | Title (TI), Abstract (AB), Authors (AU), Source (SO), Publication Year (PY), DOI |
-| **Embase** | CSV or RIS | Title, Abstract, Authors, Journal, Year, DOI |
-| **CINAHL** | RIS or CSV | Title, Abstract, Authors, Journal, Year, Accession Number |
+| Database                 | Recommended Export Format         | Fields to Include                                                                |
+| ------------------------ | --------------------------------- | -------------------------------------------------------------------------------- |
+| **PubMed**         | CSV or MEDLINE/PubMed XML (.nbib) | Title (TI), Abstract (AB), Authors (AU), Journal (TA), Year (DP), PMID, DOI      |
+| **Scopus**         | CSV or RIS                        | Title, Abstract, Authors, Source title, Year, DOI, Keywords                      |
+| **Web of Science** | Tab-delimited or Excel            | Title (TI), Abstract (AB), Authors (AU), Source (SO), Publication Year (PY), DOI |
+| **Embase**         | CSV or RIS                        | Title, Abstract, Authors, Journal, Year, DOI                                     |
+| **CINAHL**         | RIS or CSV                        | Title, Abstract, Authors, Journal, Year, Accession Number                        |
 
 **Export Instructions by Database:**
 
 **PubMed:**
+
 1. After your search, click "Save" → Select "All results" or specific range
 2. Format: Choose "PubMed" or "CSV"
 3. **Important**: Ensure abstracts are included in export (default setting)
 
 **Scopus:**
+
 1. Select all results or filter → Click "Export"
 2. Format: Choose "CSV Export" or "RIS Format"
 3. **Fields**: Select "Citation information", "Bibliographical information", "Abstract & keywords"
 
 **Web of Science:**
+
 1. Select records → Click "Export" → "Excel" or "Tab-delimited"
 2. Record Content: Choose "Full Record and Cited References"
 3. **Ensure abstract field is included** in export settings
 
 **General Tips:**
+
 - ✅ **Always include abstracts** - critical for AI screening
 - ✅ Include DOI when available - best for duplicate detection
 - ✅ Export complete records, not just citations
@@ -130,6 +136,7 @@ echo "XAI_API_KEY=your_api_key_here" > .env
 ### Running the Application
 
 **Option 1: Launch Both Backend and Frontend (Recommended)**
+
 ```bash
 # Activate virtual environment (if not already activated)
 venv\Scripts\activate  # Windows
@@ -140,10 +147,12 @@ python start_all.py
 ```
 
 This will start:
+
 - FastAPI Backend on `http://localhost:8000`
 - Streamlit Frontend on `http://localhost:8501`
 
 **Option 2: Launch Separately**
+
 ```bash
 # Terminal 1: Start Backend
 python start_backend.py
@@ -153,6 +162,7 @@ python start_frontend.py
 ```
 
 **Access Points:**
+
 - 🌐 **Web Interface**: `http://localhost:8501` (Open this in your browser)
 - 📚 **API Documentation**: `http://localhost:8000/docs` (Interactive Swagger UI)
 - 🔍 **Alternative API Docs**: `http://localhost:8000/redoc` (ReDoc format)
@@ -192,24 +202,28 @@ python start_frontend.py
 ### 1️⃣ Data Management
 
 **Step 1: Upload Files**
+
 - Navigate to "📊 Data Management" page
 - Upload one or more files (Excel, CSV, or RIS format)
 - System automatically detects file format and parses data
 - Preview shows column names and first few rows
 
 **Step 2: Map Fields (LLM-Powered)**
+
 - Click "Auto-detect fields with LLM" for intelligent mapping
 - Review and adjust auto-detected field mappings if needed
 - Essential fields: Title, Abstract (other fields optional: Authors, Journal, Year, DOI)
 - Unmapped columns are preserved in the dataset
 
 **Step 3: Merge Data**
+
 - Click "Merge Selected Datasets" to combine all sources
 - System tracks data provenance (source file for each record)
 - Automatic validation and cleaning
 - Creates new merged dataset saved to database
 
 **Step 4: Smart Deduplication**
+
 - Click "Smart Deduplicate" button
 - **5-Stage Intelligent Process**:
   1. Quality check (remove invalid records)
@@ -228,17 +242,20 @@ python start_frontend.py
 ### 2️⃣ AI Screening
 
 **Step 1: Configure Screening**
+
 - Navigate to "🤖 AI Screening" page
 - Select cleaned/merged dataset from dropdown
 - Choose AI model (grok-4-fast-reasoning recommended - cheapest + best performance)
 - Review cost estimation before starting
 
 **Step 2: Define Criteria** (PCC Framework)
+
 - **Population**: Who/what is the study about? (e.g., "Type 1 diabetes patients aged 0-18")
 - **Concept**: What is being studied? (e.g., "Continuous glucose monitoring devices")
 - **Context**: Where/when is the study conducted? (e.g., "Any healthcare setting, any time period")
 
 **Step 3: Run Screening**
+
 - Click "Start AI Screening"
 - Confirm estimated cost (shown in HKD)
 - Real-time progress tracking:
@@ -250,6 +267,7 @@ python start_frontend.py
 - **Resume support**: Can restart interrupted tasks
 
 **Performance:**
+
 - 5,000 articles in ~30 minutes (8 parallel workers)
 - Token tracking: input, output, reasoning, cached tokens
 - Cost breakdown: Input, cached, output, reasoning costs
@@ -257,6 +275,7 @@ python start_frontend.py
 ### 3️⃣ Results & Export
 
 **View Results:**
+
 - Navigate to "📈 Results" page
 - Auto-detects completed screening tasks
 - **Dropdown selector** shows:
@@ -269,11 +288,13 @@ python start_frontend.py
   - Sortable columns
 
 **Filter Results:**
+
 - **By Decision**: Include / Exclude / Manual Review
 - **By Confidence Range**: Slider to filter by confidence score
 - **Text Search**: Search across title, abstract, and reasoning
 
 **Summary Statistics:**
+
 - Total articles screened
 - Breakdown by decision (Include/Exclude/Manual Review)
 - Average confidence score
@@ -281,6 +302,7 @@ python start_frontend.py
 - Token usage breakdown
 
 **Export Options:**
+
 - **Export Included Articles**: Download CSV with only included articles + full abstracts
 - **Export All Results**: Download complete dataset with all fields
 - Format: CSV with columns: Title, Abstract, Decision, Confidence, Reasoning, Cost, Processing Time
@@ -381,13 +403,14 @@ XAI_API_KEY=your_api_key_here  # Get from https://console.x.ai/
 ### Benchmarks (Actual Performance)
 
 | Dataset Size | Upload | Merge | Deduplicate | Screen (30 workers) | Screen (50 workers) | Total (50 workers) |
-|--------------|--------|-------|-------------|---------------------|---------------------|-------------------|
-| 100 | <1s | 1s | 2s | 15s | 10s | ~15s |
-| 500 | 1s | 2s | 8s | 1.5 min | 1 min | ~2 min |
-| 1,000 | 2s | 3s | 15s | 2.5 min | 2 min | ~3 min |
-| 5,000 | 5s | 10s | 60s | 12 min | 10 min | ~12 min |
+| ------------ | ------ | ----- | ----------- | ------------------- | ------------------- | ------------------ |
+| 100          | <1s    | 1s    | 2s          | 15s                 | 10s                 | ~15s               |
+| 500          | 1s     | 2s    | 8s          | 1.5 min             | 1 min               | ~2 min             |
+| 1,000        | 2s     | 3s    | 15s         | 2.5 min             | 2 min               | ~3 min             |
+| 5,000        | 5s     | 10s   | 60s         | 12 min              | 10 min              | ~12 min            |
 
 **Notes:**
+
 - Screening time depends on abstract length, AI model, and worker count
 - grok-4-fast-reasoning: ~0.06s per article (50 parallel workers)
 - Checkpoint every 100 articles for resume support
@@ -396,16 +419,16 @@ XAI_API_KEY=your_api_key_here  # Get from https://console.x.ai/
 
 ### System Requirements
 
-| Component | Minimum | Recommended |
-|-----------|---------|-------------|
-| RAM | 2GB | 4GB+ |
-| CPU | Dual-core | Quad-core+ |
-| Storage | 500MB | 2GB+ |
-| Internet | 5 Mbps | 20 Mbps+ |
+| Component | Minimum   | Recommended |
+| --------- | --------- | ----------- |
+| RAM       | 2GB       | 4GB+        |
+| CPU       | Dual-core | Quad-core+  |
+| Storage   | 500MB     | 2GB+        |
+| Internet  | 5 Mbps    | 20 Mbps+    |
 
 ---
 
-##  Contributing
+## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
@@ -433,18 +456,14 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - **Documentation**: See `docs/` folder
 - **Issues**: Report bugs or request features via GitHub Issues
-- **Email**: [Specify contact email]
-
-### Development Team
-
-- **Project Lead**: AI Scoping Review Team
-- **Contributors**: [List contributors]
+- **Email**: wennbo@hku.hk
 
 ---
 
 ## 🗺️ Roadmap
 
 ### ✅ Version 2.0.0 (Current - November 2025)
+
 - ✅ FastAPI backend with async processing
 - ✅ Streamlit frontend with polling-based updates
 - ✅ SQLite database with SQLAlchemy ORM (persistent storage)
@@ -459,9 +478,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ### Future Versions
 
-**v2.1.0** (Q1 2026)
-- Dual-LLM evaluation system (see [DUAL_LLM_EVALUATION_PLAN.md](docs/DUAL_LLM_EVALUATION_PLAN.md))
-  - Two LLMs discuss and reach consensus on screening decisions
+**v2.1.0** 
+
+Dual-LLM evaluation system (see [DUAL_LLM_EVALUATION_PLAN.md](docs/DUAL_LLM_EVALUATION_PLAN.md))
+
+- - Two LLMs discuss and reach consensus on screening decisions
   - Structured dialogue loop (max 3 rounds) for disagreements
   - Automatic flagging for human review when needed
 - PRISMA-ScR flow diagram generation
@@ -470,14 +491,16 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - Enhanced cost optimization (prompt caching)
 - Bulk editing of screening decisions
 
-**v2.2.0** (Q2 2026)
+**v2.2.0** 
+
 - Support for additional AI models (Claude, GPT-4, Gemini)
 - Full-text PDF screening
 - Collaboration features (multi-user screening)
 - Advanced analytics dashboard
 - Integration with reference managers (Zotero, Mendeley)
 
-**v3.0.0** (Q3 2026)
+**v3.0.0** 
+
 - Machine learning-based screening optimization
 - Automated data extraction from full-text
 - Meta-analysis preparation tools
@@ -489,6 +512,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🙏 Acknowledgments
 
 This project builds upon the original AI Scoping Review platform and incorporates best practices from:
+
 - PRISMA-ScR guidelines
 - Systematic review methodologies
 - Open-source ML/AI tools
@@ -497,5 +521,5 @@ Special thanks to all researchers who provided feedback and testing.
 
 ---
 
-**Last Updated**: November 11, 2025  
+**Last Updated**: November 11, 2025
 **Version**: 2.0.0 - Core Features Complete ✅
