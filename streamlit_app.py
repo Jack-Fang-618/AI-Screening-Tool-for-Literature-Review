@@ -1,106 +1,32 @@
 """
-Streamlit Cloud Deployment - Integrated Frontend + Backend
+Streamlit App - Main Entry Point
 
-This file starts both FastAPI backend and Streamlit frontend in the same process
-for deployment on Streamlit Community Cloud.
+Deployment Architecture (Method 2 - Separate Deployments):
+- Frontend: Streamlit Cloud (this app)
+- Backend: Railway (FastAPI server)
 
-Deploy: Just upload this file to Streamlit Cloud, it will handle everything.
+Configuration:
+- Set BACKEND_URL environment variable in Streamlit Cloud settings
+- Or it defaults to http://localhost:8000 for local development
 """
 
 import streamlit as st
-import uvicorn
-import threading
-import time
+import os
 import sys
 from pathlib import Path
+import time
 
 # Add current directory to path
 sys.path.insert(0, str(Path(__file__).parent))
 
-# ===== Start FastAPI Backend in Background Thread =====
+# ===== Configuration =====
 
-# Store backend error and startup log globally
-backend_error = None
-backend_startup_log = []
+# Get backend URL from environment variable or use default for local dev
+BACKEND_URL = os.getenv('BACKEND_URL', 'http://localhost:8000')
 
-def start_backend():
-    """Start FastAPI backend server in a separate thread"""
-    global backend_error, backend_startup_log
-    
-    try:
-        backend_startup_log.append("🔧 Starting backend import...")
-        print("🔧 Starting backend import...")
-        
-        # Try importing backend - this is where most errors occur
-        try:
-            backend_startup_log.append("📦 Importing backend.main...")
-            from backend.main import app
-            backend_startup_log.append("✅ backend.main imported")
-            
-            backend_startup_log.append("📦 Importing uvicorn...")
-            import uvicorn
-            backend_startup_log.append("✅ uvicorn imported")
-            
-        except ImportError as e:
-            error_msg = f"Import Error: {str(e)}"
-            backend_error = error_msg
-            backend_startup_log.append(f"❌ {error_msg}")
-            print(f"❌ Import failed: {e}")
-            import traceback
-            traceback.print_exc()
-            return  # Exit without starting server
-            
-        except Exception as e:
-            error_msg = f"Unexpected error during import: {str(e)}"
-            backend_error = error_msg
-            backend_startup_log.append(f"❌ {error_msg}")
-            print(f"❌ {error_msg}")
-            import traceback
-            traceback.print_exc()
-            return
-        
-        backend_startup_log.append("✅ All imports successful")
-        backend_startup_log.append("🚀 Starting uvicorn server on port 8000...")
-        print("✅ Backend imported successfully")
-        print("🚀 Starting uvicorn server on port 8000...")
-        
-        # Run uvicorn
-        try:
-            uvicorn.run(
-                app,
-                host="127.0.0.1",
-                port=8000,
-                log_level="info"
-            )
-        except Exception as e:
-            error_msg = f"Uvicorn startup error: {str(e)}"
-            backend_error = error_msg
-            backend_startup_log.append(f"❌ {error_msg}")
-            print(f"❌ {error_msg}")
-            import traceback
-            traceback.print_exc()
-            
-    except Exception as e:
-        error_msg = f"Unexpected top-level error: {str(e)}"
-        backend_error = error_msg
-        backend_startup_log.append(f"❌ {error_msg}")
-        print(f"❌ Backend startup failed: {e}")
-        import traceback
-        traceback.print_exc()
+print(f"🔗 Backend URL: {BACKEND_URL}")
 
-# Initialize backend in session state (only start once per session)
-if 'backend_thread' not in st.session_state:
-    st.session_state.backend_thread = threading.Thread(target=start_backend, daemon=True)
-    st.session_state.backend_thread.start()
-    st.session_state.backend_started = time.time()
-    st.session_state.backend_error = None
-    
-# Wait for backend to be ready
-if 'backend_ready' not in st.session_state:
-    st.session_state.backend_ready = False
-
-
-# ===== Import and Run Streamlit Frontend =====
+# ===== Import Frontend Components =====
 
 from frontend.utils.api_client import APIClient
 
@@ -114,15 +40,10 @@ st.set_page_config(
 
 # Initialize Session State
 if 'api_client' not in st.session_state:
-    st.session_state.api_client = APIClient(base_url="http://localhost:8000")
+    st.session_state.api_client = APIClient(base_url=BACKEND_URL)
 
-# Check if user has configured API key
 if 'xai_api_key' not in st.session_state:
     st.session_state.xai_api_key = None
-
-# Check if backend has API key configured
-if 'backend_has_key' not in st.session_state:
-    st.session_state.backend_has_key = False
 
 # Custom CSS
 st.markdown("""
@@ -154,139 +75,66 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Check backend health
+# ===== Backend Health Check =====
+
 def check_backend_health():
     """Check if backend is responding"""
     try:
         import requests
-        response = requests.get("http://localhost:8000/health", timeout=2)
+        response = requests.get(f"{BACKEND_URL}/health", timeout=5)
         return response.status_code == 200
     except:
         return False
 
-def wait_for_backend(max_wait=30):
-    """Wait for backend to start, with timeout (30s for cloud cold start)"""
-    if st.session_state.backend_ready:
-        return True
-    
-    elapsed = time.time() - st.session_state.backend_started
-    if elapsed > max_wait:
-        return False
-    
-    if check_backend_health():
-        st.session_state.backend_ready = True
-        return True
-    
-    return False
+# ===== Main App =====
 
-# Main App
 def main():
     """Main application entry point"""
     
-    # Check if backend thread died
-    if not st.session_state.backend_thread.is_alive() and not st.session_state.backend_ready:
-        global backend_error, backend_startup_log
-        
-        st.error("❌ Backend Failed to Start")
-        
-        if backend_error:
-            st.error(f"**Error:** {backend_error}")
+    # Check backend status
+    if not check_backend_health():
+        st.error("❌ Cannot connect to backend server")
+        st.info(f"**Backend URL:** `{BACKEND_URL}`")
         
         st.markdown("""
-        ### Possible Solutions:
+        ### Troubleshooting:
         
-        1. **Missing Dependencies**: Some packages may not be installed
-        2. **Database Issues**: SQLite initialization failed
-        3. **Import Errors**: Check that all required modules are available
+        **Local Development:**
         
-        ### Startup Log:
+        Make sure the backend is running on port 8000:
+        ```powershell
+        python start_backend.py
+        ```
+        
+        **Streamlit Cloud Deployment:**
+        
+        1. Deploy backend to Railway first:
+           - Go to [Railway.app](https://railway.app)
+           - Connect your GitHub repo
+           - Deploy from `main` branch
+           - Copy the public URL (e.g., `https://your-app.up.railway.app`)
+        
+        2. Configure Streamlit Cloud:
+           - Go to your app settings
+           - Add environment variable:
+             ```
+             BACKEND_URL = https://your-app.up.railway.app
+             ```
+        
+        3. Check Railway logs to ensure backend is running
         """)
         
-        # Display startup log
-        if backend_startup_log:
-            st.code("\n".join(backend_startup_log))
-        else:
-            st.warning("No startup log captured")
-        
-        st.markdown("### Debug Information:")
-        st.code(f"""
-Thread Status: Dead (exited with error)
-Error Message: {backend_error or 'Not captured'}
-Time Elapsed: {int(time.time() - st.session_state.backend_started)}s
-Log Entries: {len(backend_startup_log)}
-        """)
-        
-        if st.button("🔄 Restart Backend", type="primary"):
-            # Clear session state to restart
-            for key in ['backend_thread', 'backend_started', 'backend_ready', 'backend_error']:
-                if key in st.session_state:
-                    del st.session_state[key]
-            backend_error = None
-            backend_startup_log.clear()
+        if st.button("🔄 Retry Connection"):
             st.rerun()
         
         st.stop()
     
-    # Check backend status
-    if not wait_for_backend():
-        elapsed = int(time.time() - st.session_state.backend_started)
-        
-        st.warning(f"⏳ Backend is starting up... ({elapsed}s elapsed)")
-        
-        # Show different messages based on time
-        if elapsed < 10:
-            st.info("🔧 Loading dependencies and initializing backend...")
-        elif elapsed < 20:
-            st.info("📊 Setting up database and task manager...")
-        else:
-            st.info("⚙️ Almost ready... Starting cleanup task...")
-        
-        # Show progress bar
-        progress = min(elapsed / 30, 1.0)
-        st.progress(progress)
-        
-        # Show debug info in expander
-        with st.expander("🔍 Debug Information"):
-            st.write(f"Backend thread alive: {st.session_state.backend_thread.is_alive()}")
-            st.write(f"Time elapsed: {elapsed}s")
-            st.write(f"Max wait: 30s")
-            
-            # Try to show backend logs if available
-            try:
-                import requests
-                response = requests.get("http://localhost:8000/", timeout=1)
-                st.success(f"✅ Backend responded! Status: {response.status_code}")
-            except (ConnectionRefusedError, requests.exceptions.ConnectionError):
-                st.warning("⚠️ Backend port 8000 not accepting connections yet")
-            except Exception as e:
-                st.warning(f"⚠️ Connection attempt: {str(e)}")
-        
-        # Add retry button
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("🔄 Retry Connection", use_container_width=True):
-                st.rerun()
-        with col2:
-            if st.button("🔧 Reset Backend", use_container_width=True):
-                # Clear session state to restart backend
-                for key in ['backend_thread', 'backend_started', 'backend_ready']:
-                    if key in st.session_state:
-                        del st.session_state[key]
-                st.rerun()
-        
-        # Auto-refresh every 2 seconds
-        time.sleep(2)
-        st.rerun()
-        return
-    
-    # Show success message briefly
-    if not st.session_state.get('welcomed', False):
-        st.success("✅ System Ready!")
-        st.session_state.welcomed = True
+    # Backend is healthy
+    st.success(f"✅ Connected to backend: `{BACKEND_URL}`")
     
     # Check if user needs to configure API key
     if not st.session_state.xai_api_key:
-        st.warning("⚠️ Please configure your X.AI API Key to use this application")
+        st.warning("⚠️ Please configure your X.AI API Key to use AI screening features")
         
         with st.expander("🔑 Configure API Key", expanded=True):
             st.markdown("""
@@ -335,7 +183,7 @@ Log Entries: {len(backend_startup_log)}
     
     **Features:**
     - 📊 Multi-format upload (Excel, CSV, RIS)
-    - 🤖 AI-powered screening with up to 50 parallel workers
+    - 🤖 AI-powered screening with up to 16 parallel workers
     - 🔍 Smart deduplication with DOI + title similarity
     - 📈 Real-time progress tracking and cost estimation
     - 📄 PRISMA-compliant export
@@ -354,7 +202,7 @@ Log Entries: {len(backend_startup_log)}
         - Merge datasets
         - Deduplicate
         """)
-        if st.button("Start Data Management", type="primary", width="stretch"):
+        if st.button("Start Data Management", type="primary", use_container_width=True):
             st.switch_page("pages/1_Data_Management.py")
     
     with col2:
@@ -365,7 +213,7 @@ Log Entries: {len(backend_startup_log)}
         - Parallel processing
         - Track progress
         """)
-        if st.button("Start AI Screening", type="primary", width="stretch"):
+        if st.button("Start AI Screening", type="primary", use_container_width=True):
             st.switch_page("pages/2_AI_Screening.py")
     
     with col3:
@@ -376,7 +224,7 @@ Log Entries: {len(backend_startup_log)}
         - Generate reports
         - Export data
         """)
-        if st.button("View Results", type="primary", width="stretch"):
+        if st.button("View Results", type="primary", use_container_width=True):
             st.switch_page("pages/3_Results.py")
     
     st.markdown("---")
