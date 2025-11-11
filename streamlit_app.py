@@ -164,7 +164,7 @@ def main():
                 import requests
                 response = requests.get("http://localhost:8000/", timeout=1)
                 st.success(f"✅ Backend responded! Status: {response.status_code}")
-            except requests.exceptions.ConnectionRefusedError:
+            except (ConnectionRefusedError, requests.exceptions.ConnectionError):
                 st.warning("⚠️ Backend port 8000 not accepting connections yet")
             except Exception as e:
                 st.warning(f"⚠️ Connection attempt: {str(e)}")
