@@ -317,7 +317,7 @@ def main():
             st.markdown('<div class="metric-card metric-card-cost">', unsafe_allow_html=True)
             # Status API returns 'current_cost', not 'total_cost'
             cost = status.get('current_cost', 0)
-            st.metric("Total Cost", f"HKD ${cost:.2f}")
+            st.metric("Est. Cost", f"~HKD ${cost:.2f}")
             st.markdown('</div>', unsafe_allow_html=True)
         
         st.markdown("---")
