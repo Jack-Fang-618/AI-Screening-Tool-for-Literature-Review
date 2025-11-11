@@ -285,11 +285,12 @@ def main():
         # Metrics row - 4 columns for the 4 main metrics
         col1, col2, col3, col4 = st.columns(4)
         
-        # Get counts from status (backend returns included_count, excluded_count, manual_review_count)
-        relevant = status.get('included_count', 0)
-        irrelevant = status.get('excluded_count', 0)
-        uncertain = status.get('manual_review_count', 0)
-        total = status.get('total_items', 0)
+        # Get counts from status (backend returns included, excluded, manual_review)
+        # Note: Backend API returns 'included', 'excluded', 'manual_review' (not *_count)
+        relevant = status.get('included', 0)
+        irrelevant = status.get('excluded', 0)
+        uncertain = status.get('manual_review', 0)
+        total = status.get('total_articles', 0)
         
         with col1:
             st.markdown('<div class="metric-card metric-card-relevant">', unsafe_allow_html=True)
