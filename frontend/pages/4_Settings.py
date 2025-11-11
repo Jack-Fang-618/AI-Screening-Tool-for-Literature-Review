@@ -9,6 +9,7 @@ Handles:
 
 import streamlit as st
 import json
+import time
 from pathlib import Path
 import sys
 
@@ -178,64 +179,80 @@ def main():
         st.markdown('<div class="section-box">', unsafe_allow_html=True)
         st.markdown("### XAI API Key Configuration")
         
-        # Check if API key exists in .env
-        has_env_key, masked_key = check_env_api_key()
+        # Check current session API key
+        has_session_key = 'xai_api_key' in st.session_state and st.session_state.xai_api_key
         
         st.markdown("""
-        #### 🔑 API Key Options
+        #### 🔑 API Key Management
         
-        **For Development (Current Setup):**
-        - The `.env` file contains a shared API key for all users
-        - This is used by default when running locally
+        **Current System (Per-User):**
+        - Each user provides their own API key
+        - API key is stored in your browser session only
+        - Your API usage is billed to your own X.AI account
+        - Key is cleared when you close the browser
         
-        **For Multi-User Deployment:**
-        - Each user can configure their own API key here
-        - User-specific keys override the `.env` key
-        - Future update: Backend will support per-request API keys
+        **Security:**
+        - Keys are never stored on the server
+        - Keys are only used for your screening tasks
+        - Each user pays for their own API usage
         """)
         
-        if has_env_key:
+        if has_session_key:
+            masked_key = st.session_state.xai_api_key[:8] + "..." + st.session_state.xai_api_key[-4:] if len(st.session_state.xai_api_key) > 12 else "***"
             st.markdown('<div class="success-box">', unsafe_allow_html=True)
-            st.markdown(f"**✓ Default API Key Configured in .env:** `{masked_key}`")
-            st.markdown("This key is shared across all users for development.")
+            st.markdown(f"**✓ API Key Active in Session:** `{masked_key}`")
+            st.markdown("This key is used for all your screening tasks.")
             st.markdown('</div>', unsafe_allow_html=True)
         else:
             st.markdown('<div class="warning-box">', unsafe_allow_html=True)
-            st.markdown("**⚠️ No Default API Key Found in .env**")
-            st.markdown("Please configure an API key below or add `XAI_API_KEY` to the `.env` file.")
+            st.markdown("**⚠️ No API Key Found in Session**")
+            st.markdown("Please enter your API key below to use AI screening features.")
             st.markdown('</div>', unsafe_allow_html=True)
         
         st.markdown("---")
         
         # API Key Input
-        st.markdown("#### Update Default API Key (.env file)")
-        st.caption("For development: This updates the shared API key in .env")
+        st.markdown("#### Update Your Session API Key")
+        st.caption("This key is only stored in your browser session (not on server)")
         
         col1, col2 = st.columns([3, 1])
         
         with col1:
+            current_key = st.session_state.xai_api_key if has_session_key else ""
             new_api_key = st.text_input(
                 "API Key",
-                value=st.session_state.settings.get('xai_api_key', ''),
+                value=current_key,
                 type="password",
                 placeholder="xai-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-                help="Your X.AI API key (starts with 'xai-')"
+                help="Your X.AI API key (starts with 'xai-')",
+                key="api_key_input"
             )
         
         with col2:
             st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("Save API Key", type="primary", width="stretch"):
-                if new_api_key:
-                    if update_env_api_key(new_api_key):
-                        st.session_state.settings['xai_api_key'] = new_api_key
-                        save_settings()
-                        st.success("✓ API key saved successfully!")
-                        st.info("Please restart the backend server for changes to take effect.")
+            if st.button("Update API Key", type="primary", width="stretch"):
+                if new_api_key and new_api_key.strip():
+                    # Validate format
+                    if new_api_key.startswith('xai-'):
+                        st.session_state.xai_api_key = new_api_key.strip()
+                        st.success("✓ API key updated successfully!")
+                        st.info("💡 Your API key is active for this session only.")
+                        time.sleep(1)
                         st.rerun()
                     else:
-                        st.error("Failed to save API key")
+                        st.error("❌ Invalid API key format. Key should start with 'xai-'")
                 else:
-                    st.warning("Please enter an API key")
+                    st.warning("⚠️ Please enter a valid API key")
+        
+        # Clear API key option
+        if has_session_key:
+            st.markdown("---")
+            if st.button("🗑️ Clear API Key from Session", type="secondary", width="stretch"):
+                if 'xai_api_key' in st.session_state:
+                    del st.session_state.xai_api_key
+                st.success("✓ API key cleared from session")
+                time.sleep(1)
+                st.rerun()
         
         st.markdown("---")
         
@@ -249,7 +266,7 @@ def main():
             3. **Navigate to API Keys**: Find the API Keys section in your dashboard
             4. **Create New Key**: Click "Create New API Key"
             5. **Copy Key**: Copy the generated key (starts with `xai-`)
-            6. **Paste Here**: Paste the key in the field above and click "Save API Key"
+            6. **Paste Here**: Paste the key in the field above and click "Update API Key"
             
             ### Important Notes:
             
