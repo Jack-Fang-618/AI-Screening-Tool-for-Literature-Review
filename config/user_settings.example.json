@@ -1,0 +1,7 @@
+{
+  "inclusion_criteria": "",
+  "exclusion_criteria": "",
+  "default_model": "grok-4-fast-reasoning",
+  "default_workers": 30,
+  "auto_save": true
+}

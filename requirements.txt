@@ -1,0 +1,96 @@
+# AI Scoping Review - Core Function Module
+# ==========================================
+# Dependencies for FastAPI Backend + Streamlit Frontend
+# Version: 2.0.0
+
+# =============================
+# Backend Framework (FastAPI)
+# =============================
+fastapi>=0.104.0            # Modern async web framework
+uvicorn[standard]>=0.24.0   # ASGI server
+pydantic>=2.0.0              # Data validation
+pydantic-settings>=2.0.0     # Settings management
+
+# =============================
+# Frontend Framework (Streamlit)
+# =============================
+streamlit>=1.28.0
+
+# =============================
+# Data Processing
+# =============================
+pandas>=2.0.0
+numpy>=1.24.0
+openpyxl>=3.1.0              # Excel file support
+xlrd>=2.0.1                  # Legacy Excel format (.xls)
+
+# =============================
+# Machine Learning & NLP
+# =============================
+scikit-learn>=1.3.0          # TF-IDF, cosine similarity for deduplication
+scipy>=1.11.0                # Scientific computing
+
+# =============================
+# Visualization
+# =============================
+plotly>=5.15.0               # Interactive charts
+matplotlib>=3.7.0            # PRISMA diagrams
+seaborn>=0.12.0              # Statistical visualization
+
+# =============================
+# AI API Client
+# =============================
+requests>=2.31.0             # HTTP client for Grok API
+httpx>=0.25.0                # Async HTTP client
+aiohttp>=3.9.0               # Alternative async client
+
+# =============================
+# File Parsing
+# =============================
+rispy>=0.7.1                 # RIS file parser
+chardet>=5.1.0               # Character encoding detection
+
+# =============================
+# Configuration & Utilities
+# =============================
+pyyaml>=6.0                  # YAML configuration files
+python-dotenv>=1.0.0         # Environment variable management
+tqdm>=4.65.0                 # Progress bars
+
+# =============================
+# Parallel Processing
+# =============================
+# concurrent.futures (built-in)
+# No additional dependencies needed for ThreadPoolExecutor
+
+# =============================
+# Data Validation
+# =============================
+pydantic>=2.0.0              # Data validation and settings management
+
+# =============================
+# Database (SQLAlchemy)
+# =============================
+sqlalchemy>=2.0.0            # SQL toolkit and ORM
+alembic>=1.12.0              # Database migrations
+# Database drivers (choose based on deployment):
+# psycopg2-binary>=2.9.0     # PostgreSQL (production recommended)
+# pymysql>=1.1.0             # MySQL alternative
+# Default: SQLite (built-in, no additional driver needed)
+
+# =============================
+# Logging & Monitoring
+# =============================
+loguru>=0.7.0                # Enhanced logging
+
+# =============================
+# Optional: Performance Optimization
+# =============================
+# Uncomment if needed for large datasets
+# numba>=0.57.0              # JIT compilation for numerical code
+# dask>=2023.5.0             # Parallel computing for very large datasets
+
+# =============================
+# Development Dependencies (separate file)
+# =============================
+# See requirements-dev.txt for testing and development tools
