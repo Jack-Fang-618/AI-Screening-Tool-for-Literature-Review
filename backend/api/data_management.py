@@ -772,12 +772,12 @@ async def list_datasets(db: Session = Depends(get_db_session)):
         # Determine file_type based on status and attributes
         if dataset.is_merged:
             file_type = 'merged'
+        elif 'manual_review' in (dataset.name or '').lower():
+            # Manual review datasets (from deduplication)
+            file_type = 'manual_review'
         elif dataset.status == DatasetStatus.DEDUPLICATED:
-            # Check if it's a manual review dataset
-            if 'manual_review' in (dataset.name or '').lower():
-                file_type = 'manual_review'
-            else:
-                file_type = 'deduplicated'
+            # Cleaned/deduplicated datasets
+            file_type = 'deduplicated'
         elif dataset.file_format:
             file_type = dataset.file_format
         else:

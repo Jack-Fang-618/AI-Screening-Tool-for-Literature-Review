@@ -518,8 +518,9 @@ def main():
                         st.session_state.dataset_to_dedupe = dataset_to_dedupe
                         
                         # Track clean and review datasets as belonging to this session
-                        if dedup_result.get('clean_dataset_id'):
-                            st.session_state.my_dataset_ids.add(dedup_result['clean_dataset_id'])
+                        # API returns: dataset_id (cleaned), review_dataset_id (manual review)
+                        if dedup_result.get('dataset_id'):
+                            st.session_state.my_dataset_ids.add(dedup_result['dataset_id'])
                         if dedup_result.get('review_dataset_id'):
                             st.session_state['review_dataset_id'] = dedup_result['review_dataset_id']
                             st.session_state.my_dataset_ids.add(dedup_result['review_dataset_id'])

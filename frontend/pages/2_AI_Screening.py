@@ -421,7 +421,7 @@ def main():
     
     # Header
     st.markdown('<h1 class="main-header">AI Screening</h1>', unsafe_allow_html=True)
-    st.markdown("**Parallel AI-powered article screening with configurable workers (1-50). Conservative settings with 25% safety margin for stable performance.**")
+    st.markdown("**Parallel AI-powered article screening with configurable workers (1-16).**")
     
     st.markdown("---")
     
