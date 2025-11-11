@@ -197,18 +197,28 @@ def main():
             with col_header1:
                 st.markdown("**Supported formats**: Excel (.xlsx, .xls), CSV, RIS, NBIB (PubMed/MEDLINE)")
             with col_header2:
-                if st.button("🗑️ Clear All Datasets", type="secondary", width="stretch", key="clear_all_datasets"):
+                if st.button("🗑️ Clear My Data", type="secondary", width="stretch", key="clear_all_datasets"):
                     if st.session_state.get('confirm_clear_all'):
-                        # Actually delete
-                        with st.spinner("Deleting all datasets..."):
+                        # Delete only my datasets (belonging to this session)
+                        with st.spinner("Deleting your datasets..."):
                             try:
-                                result = api_client.delete_all_datasets()
+                                # Delete each dataset that belongs to this session
+                                deleted_count = 0
+                                for dataset_id in list(st.session_state.my_dataset_ids):
+                                    try:
+                                        api_client.delete_dataset(dataset_id)
+                                        deleted_count += 1
+                                    except:
+                                        pass  # Continue even if some deletions fail
+                                
+                                # Clear session state
                                 st.session_state.uploaded_datasets = []
+                                st.session_state.my_dataset_ids = set()
                                 st.session_state.merged_dataset_id = None
                                 st.session_state.dedup_result = None
                                 st.session_state.current_step = 1
                                 st.session_state.confirm_clear_all = False
-                                st.success(f"✅ Deleted {result.get('database_deleted', 0)} datasets")
+                                st.success(f"✅ Deleted {deleted_count} of your datasets")
                                 st.rerun()
                             except Exception as e:
                                 st.error(f"Failed to delete datasets: {e}")
@@ -220,7 +230,7 @@ def main():
             
             # Show confirmation warning if needed
             if st.session_state.get('confirm_clear_all'):
-                st.warning("⚠️ Are you sure? This will delete ALL datasets (uploaded, merged, review lists). Click 'Clear All Datasets' again to confirm, or upload new files to cancel.")
+                st.warning(f"⚠️ Are you sure? This will delete {len(st.session_state.my_dataset_ids)} dataset(s) from YOUR session (uploaded, merged, review lists). Click 'Clear My Data' again to confirm, or upload new files to cancel.")
         else:
             st.markdown("**Supported formats**: Excel (.xlsx, .xls), CSV, RIS, NBIB (PubMed/MEDLINE)")
         

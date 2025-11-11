@@ -72,13 +72,22 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("🚀 Starting AI Scoping Review Backend Server")
     logger.info("📊 Initializing task manager...")
-    # TODO: Initialize task manager, load configs, etc.
+    from backend.tasks.task_manager import task_manager
+    task_manager.load_tasks_from_db()
+    logger.info("✅ Task manager initialized")
+    
+    # Start automatic data cleanup task
+    logger.info("🧹 Starting automatic data cleanup task...")
+    from backend.tasks.cleanup_task import cleanup_task
+    cleanup_task.start()
+    logger.info("✅ Cleanup task started (runs every 6 hours)")
     
     yield
     
     # Shutdown
     logger.info("🛑 Shutting down server...")
-    # TODO: Cleanup tasks, save state, etc.
+    cleanup_task.stop()
+    logger.info("✅ Cleanup task stopped")
 
 
 # Create FastAPI app
