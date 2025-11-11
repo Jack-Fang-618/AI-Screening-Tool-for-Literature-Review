@@ -27,19 +27,24 @@ git push
 4. Main file path: `streamlit_app.py`
 5. 点击 **"Deploy!"**
 
-### 步骤 2：配置环境变量（重要！）
+### 步骤 2：配置环境变量
 
-在部署页面：
+⚠️ **重要更新**：本应用**不需要**在 Streamlit Cloud 配置 API Key！
 
-1. 点击 **"Advanced settings"** 或部署后点击 **"Manage app" → "Settings"**
-2. 找到 **"Secrets"** 部分
-3. 添加你的 API Key：
+**为什么？**
+- ✅ 每个用户使用自己的 API Key
+- ✅ 每个用户支付自己的费用
+- ✅ 你不会为别人的使用付费
+- ✅ API Key 存储在用户浏览器的 Session 中
 
-```toml
-XAI_API_KEY = "your-xai-api-key-here"
-```
+**用户如何使用：**
+1. 打开你的应用链接
+2. 首次访问会看到"配置 API Key"页面
+3. 用户输入自己的 X.AI API Key
+4. Key 保存在他们的浏览器 session 中
+5. 他们使用应用，费用从他们的账户扣除
 
-4. 保存设置
+**你可以跳过 "Advanced settings" → "Secrets"** - 留空即可！
 
 ### 步骤 3：等待部署完成
 

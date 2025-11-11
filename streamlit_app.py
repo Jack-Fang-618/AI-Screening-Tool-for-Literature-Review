@@ -64,6 +64,14 @@ st.set_page_config(
 if 'api_client' not in st.session_state:
     st.session_state.api_client = APIClient(base_url="http://localhost:8000")
 
+# Check if user has configured API key
+if 'xai_api_key' not in st.session_state:
+    st.session_state.xai_api_key = None
+
+# Check if backend has API key configured
+if 'backend_has_key' not in st.session_state:
+    st.session_state.backend_has_key = False
+
 # Custom CSS
 st.markdown("""
 <style>
@@ -106,6 +114,42 @@ def check_backend_health():
 # Main App
 def main():
     """Main application entry point"""
+    
+    # Check if user needs to configure API key
+    if not st.session_state.xai_api_key:
+        st.warning("⚠️ Please configure your X.AI API Key to use this application")
+        
+        with st.expander("🔑 Configure API Key", expanded=True):
+            st.markdown("""
+            ### Get Your API Key
+            
+            1. Visit [X.AI Console](https://console.x.ai/)
+            2. Sign up or log in
+            3. Navigate to **API Keys**
+            4. Create a new key or copy existing one
+            5. Paste it below
+            
+            **Privacy Notice:** Your API key is stored only in your browser session and is never shared.
+            Each user pays for their own API usage.
+            """)
+            
+            api_key_input = st.text_input(
+                "Enter your X.AI API Key",
+                type="password",
+                placeholder="xai-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+                help="Your API key starts with 'xai-'"
+            )
+            
+            if st.button("Save API Key", type="primary"):
+                if api_key_input and api_key_input.startswith("xai-"):
+                    st.session_state.xai_api_key = api_key_input
+                    st.success("✅ API Key saved! Reloading application...")
+                    time.sleep(1)
+                    st.rerun()
+                else:
+                    st.error("❌ Invalid API key format. It should start with 'xai-'")
+        
+        st.stop()
     
     # Header
     st.markdown('<h1 class="main-header">🔬 AI Screening Tool for Literature Review</h1>', unsafe_allow_html=True)
