@@ -93,6 +93,13 @@ st.markdown("""
 # Initialize session state
 if 'selected_task_id' not in st.session_state:
     st.session_state.selected_task_id = None
+# Session ID for data isolation (shared with other pages)
+if 'session_id' not in st.session_state:
+    import uuid
+    st.session_state.session_id = str(uuid.uuid4())
+# Track task IDs that belong to this session (shared with AI Screening)
+if 'my_task_ids' not in st.session_state:
+    st.session_state.my_task_ids = set()
 
 
 def format_time(seconds):
@@ -123,7 +130,12 @@ def main():
     # Load available completed tasks
     completed_tasks = []
     try:
-        completed_tasks = api_client.list_tasks(status='COMPLETED', limit=50)
+        all_completed_tasks = api_client.list_tasks(status='COMPLETED', limit=50)
+        # Filter: Only show tasks that belong to this session
+        completed_tasks = [
+            task for task in all_completed_tasks
+            if task['task_id'] in st.session_state.my_task_ids
+        ]
     except Exception as e:
         logger.error(f"Failed to load tasks: {e}")
     
@@ -235,6 +247,15 @@ def main():
                 st.markdown(f"**Error:** {status.get('error', 'Unknown error')}")
             
             st.markdown('</div>', unsafe_allow_html=True)
+            return
+        
+        # Security check: Verify this task belongs to this session
+        if task_id not in st.session_state.my_task_ids:
+            st.error("❌ Access denied: This task does not belong to your session")
+            st.info("💡 You can only view results from tasks you created in this session")
+            st.session_state.selected_task_id = None
+            if st.button("← Back to Task Selection"):
+                st.rerun()
             return
         
         # Get results

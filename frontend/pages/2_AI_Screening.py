@@ -127,6 +127,16 @@ if 'last_status' not in st.session_state:
     st.session_state.last_status = None
 if 'settings' not in st.session_state:
     st.session_state.settings = {}
+# Session ID for data isolation (shared with Data Management)
+if 'session_id' not in st.session_state:
+    import uuid
+    st.session_state.session_id = str(uuid.uuid4())
+# Track dataset IDs that belong to this session (shared with Data Management)
+if 'my_dataset_ids' not in st.session_state:
+    st.session_state.my_dataset_ids = set()
+# Track task IDs that belong to this session
+if 'my_task_ids' not in st.session_state:
+    st.session_state.my_task_ids = set()
 
 
 def load_settings_from_file():
@@ -429,18 +439,24 @@ def main():
         # get_datasets() returns a list directly, not a dict
         all_datasets = datasets_response if isinstance(datasets_response, list) else datasets_response.get('datasets', [])
         
-        # Filter to show only cleaned/processed datasets (merged or manual_review)
+        # Filter 1: Only show datasets that belong to this session
+        my_datasets = [
+            ds for ds in all_datasets
+            if ds['dataset_id'] in st.session_state.my_dataset_ids
+        ]
+        
+        # Filter 2: From my datasets, show only cleaned/processed datasets (merged or manual_review)
         # Exclude raw uploads (individual PubMed, Scopus, WoS files)
         available_datasets = [
-            ds for ds in all_datasets
+            ds for ds in my_datasets
             if ds.get('file_type') in ['merged', 'manual_review'] or
                'merged' in ds.get('filename', '').lower() or
                'clean' in ds.get('filename', '').lower() or
                'deduplicated' in ds.get('filename', '').lower()
         ]
         
-        # If no processed datasets but there are uploads, suggest processing first
-        if not available_datasets and all_datasets:
+        # If no processed datasets but there are my uploads, suggest processing first
+        if not available_datasets and my_datasets:
             st.session_state.show_process_suggestion = True
         else:
             st.session_state.show_process_suggestion = False
@@ -448,13 +464,13 @@ def main():
     except Exception as e:
         st.error(f"Failed to load datasets: {str(e)}")
         available_datasets = []
-        all_datasets = []
+        my_datasets = []
     
     # Show suggestion if no processed datasets but raw uploads exist
     if st.session_state.get('show_process_suggestion'):
         st.markdown('<div class="warning-box">', unsafe_allow_html=True)
         st.markdown("**⚠️ No processed datasets ready for screening**")
-        st.markdown(f"You have {len(all_datasets)} uploaded dataset(s), but they need to be processed first.")
+        st.markdown(f"You have {len(my_datasets)} uploaded dataset(s), but they need to be processed first.")
         st.markdown("**Next steps:**")
         st.markdown("1. Go to Data Management")
         st.markdown("2. Merge your datasets (with auto field mapping)")
@@ -469,9 +485,9 @@ def main():
                 st.switch_page("pages/1_Data_Management.py")
         
         with col_nav2:
-            if st.button("🔄 Show All Datasets Anyway", width="stretch"):
-                # Allow override to show all datasets
-                available_datasets = all_datasets
+            if st.button("🔄 Show All My Datasets Anyway", width="stretch"):
+                # Allow override to show all my datasets
+                available_datasets = my_datasets
                 st.session_state.show_process_suggestion = False
                 st.rerun()
         
@@ -851,13 +867,16 @@ def main():
                         limit=limit_param
                     )
                     
-                    st.session_state.screening_task_id = response['task_id']
+                    task_id = response['task_id']
+                    st.session_state.screening_task_id = task_id
                     st.session_state.screening_in_progress = True
+                    # Track this task as belonging to this session
+                    st.session_state.my_task_ids.add(task_id)
                     
                     if enable_test_mode and test_sample_size:
-                        st.success(f"🧪 Test screening started! Screening {test_sample_size} articles. Task ID: {response['task_id']}")
+                        st.success(f"🧪 Test screening started! Screening {test_sample_size} articles. Task ID: {task_id}")
                     else:
-                        st.success(f"✅ Screening started! Task ID: {response['task_id']}")
+                        st.success(f"✅ Screening started! Task ID: {task_id}")
                     time.sleep(1)
                     st.rerun()
                 

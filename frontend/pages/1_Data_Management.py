@@ -109,46 +109,40 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Initialize session state
+# Initialize session state
 if 'uploaded_datasets' not in st.session_state:
     st.session_state.uploaded_datasets = []
 if 'merged_dataset_id' not in st.session_state:
     st.session_state.merged_dataset_id = None
 if 'current_step' not in st.session_state:
     st.session_state.current_step = 1
+# Session ID for data isolation - each browser session gets unique ID
+if 'session_id' not in st.session_state:
+    import uuid
+    st.session_state.session_id = str(uuid.uuid4())
+# Track dataset IDs that belong to this session
+if 'my_dataset_ids' not in st.session_state:
+    st.session_state.my_dataset_ids = set()
 
 
 def sync_with_backend():
-    """Sync session state with backend datasets (handles backend restarts)"""
+    """Sync session state with backend datasets (only this session's data)"""
     try:
-        # Add timeout to prevent hanging
-        import requests
-        original_timeout = api_client.session.timeout if hasattr(api_client.session, 'timeout') else None
-        
-        # Temporarily set a short timeout for this check
+        # Get all datasets from backend
         backend_datasets = api_client.get_datasets()
         
-        # Create a map of existing dataset IDs
-        backend_ids = {ds['dataset_id'] for ds in backend_datasets}
-        
-        # Remove datasets from session that no longer exist in backend
-        st.session_state.uploaded_datasets = [
-            ds for ds in st.session_state.uploaded_datasets 
-            if ds['dataset_id'] in backend_ids
+        # Filter: Only keep datasets that belong to this session
+        my_datasets = [
+            ds for ds in backend_datasets 
+            if ds['dataset_id'] in st.session_state.my_dataset_ids
         ]
         
-        # Add new datasets from backend that aren't in session
-        session_ids = {ds['dataset_id'] for ds in st.session_state.uploaded_datasets}
-        for backend_ds in backend_datasets:
-            if backend_ds['dataset_id'] not in session_ids:
-                st.session_state.uploaded_datasets.append(backend_ds)
+        # Update session state with filtered datasets
+        st.session_state.uploaded_datasets = my_datasets
         
-    except requests.exceptions.Timeout:
-        st.error("⚠️ Backend connection timeout. Please check if the backend server is running.")
-    except requests.exceptions.ConnectionError:
-        st.error("⚠️ Cannot connect to backend. Please make sure the backend server is running at http://localhost:8000")
     except Exception as e:
-        # Backend might be down or no datasets exist
-        st.error(f"⚠️ Could not sync with backend: {e}")
+        # Backend might be down - keep existing session data
+        pass  # Silently fail, user can retry with manual refresh
 
 
 def main():
@@ -258,6 +252,8 @@ def main():
                                 result = api_client.upload_file(file)
                                 upload_results.append(result)
                                 st.session_state.uploaded_datasets.append(result)
+                                # Track this dataset as belonging to this session
+                                st.session_state.my_dataset_ids.add(result['dataset_id'])
                             except Exception as e:
                                 st.error(f"Failed to upload {file.name}: {str(e)}")
                             
@@ -369,6 +365,8 @@ def main():
                             
                             st.session_state.merged_dataset_id = merge_result['merged_dataset_id']
                             st.session_state.merge_result = merge_result  # Store for download
+                            # Track merged dataset as belonging to this session
+                            st.session_state.my_dataset_ids.add(merge_result['merged_dataset_id'])
                             
                             st.markdown('<div class="success-box">', unsafe_allow_html=True)
                             st.markdown(f"### ✅ Merge Complete!")
@@ -509,9 +507,12 @@ def main():
                         st.session_state.dedup_result = dedup_result
                         st.session_state.dataset_to_dedupe = dataset_to_dedupe
                         
-                        # Store review dataset ID if exists
+                        # Track clean and review datasets as belonging to this session
+                        if dedup_result.get('clean_dataset_id'):
+                            st.session_state.my_dataset_ids.add(dedup_result['clean_dataset_id'])
                         if dedup_result.get('review_dataset_id'):
                             st.session_state['review_dataset_id'] = dedup_result['review_dataset_id']
+                            st.session_state.my_dataset_ids.add(dedup_result['review_dataset_id'])
                         
                         st.rerun()
                         
