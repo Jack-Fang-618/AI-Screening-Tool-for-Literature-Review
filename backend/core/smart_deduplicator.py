@@ -313,6 +313,14 @@ class SmartDeduplicator:
         if len(titles) < 2:
             return df, 0, []
         
+        # For very large datasets (>5000 records), use optimized chunked processing
+        if len(titles) > 5000:
+            logger.warning(
+                f"⚠️ Large dataset detected ({len(titles)} records). "
+                f"Using optimized chunked processing to prevent timeout."
+            )
+            return self._title_similarity_chunked(df, title_col)
+        
         # Calculate TF-IDF similarity
         logger.info("🔍 Calculating title similarity...")
         vectorizer = TfidfVectorizer(
@@ -542,3 +550,113 @@ class SmartDeduplicator:
         report.append("=" * 80)
         
         return "\n".join(report)
+    
+    def _title_similarity_chunked(
+        self,
+        df: pd.DataFrame,
+        title_col: str,
+        chunk_size: int = 2000
+    ) -> Tuple[pd.DataFrame, int, List[Dict]]:
+        """
+        Optimized title similarity matching for large datasets
+        
+        Instead of computing full NxN similarity matrix (which causes timeouts),
+        process in chunks and use approximate nearest neighbor approach
+        
+        Args:
+            df: DataFrame to deduplicate
+            title_col: Column name containing titles
+            chunk_size: Size of processing chunks
+            
+        Returns:
+            (Deduplicated DataFrame, confirmed duplicates count, list needing review)
+        """
+        from sklearn.feature_extraction.text import TfidfVectorizer
+        from sklearn.metrics.pairwise import cosine_similarity
+        import numpy as np
+        
+        titles = df[title_col].fillna('').astype(str)
+        confirmed_duplicates = set()
+        needs_review = []
+        
+        # Fit vectorizer on all titles
+        logger.info(f"🔍 Fitting TF-IDF on {len(titles)} titles...")
+        vectorizer = TfidfVectorizer(
+            lowercase=True,
+            ngram_range=(1, 2),
+            min_df=1,
+            max_df=0.95
+        )
+        
+        try:
+            tfidf_matrix = vectorizer.fit_transform(titles)
+        except Exception as e:
+            logger.error(f"❌ TF-IDF calculation failed: {e}")
+            return df, 0, []
+        
+        # Process in chunks to avoid memory/time issues
+        num_chunks = (len(titles) + chunk_size - 1) // chunk_size
+        logger.info(f"📦 Processing {len(titles)} records in {num_chunks} chunks of {chunk_size}")
+        
+        for chunk_idx in range(num_chunks):
+            start_idx = chunk_idx * chunk_size
+            end_idx = min((chunk_idx + 1) * chunk_size, len(titles))
+            
+            logger.info(f"   Processing chunk {chunk_idx + 1}/{num_chunks} (records {start_idx}-{end_idx})")
+            
+            # Compare this chunk with all subsequent records
+            chunk_matrix = tfidf_matrix[start_idx:end_idx]
+            remaining_matrix = tfidf_matrix[end_idx:]
+            
+            if len(remaining_matrix) == 0:
+                continue
+            
+            # Compute similarity only between chunk and remaining
+            similarity_chunk = cosine_similarity(chunk_matrix, remaining_matrix)
+            
+            # Find similar pairs
+            for i in range(len(similarity_chunk)):
+                global_i = start_idx + i
+                if global_i in confirmed_duplicates:
+                    continue
+                
+                # Check similarities with remaining records
+                for j in range(len(similarity_chunk[i])):
+                    global_j = end_idx + j
+                    if global_j in confirmed_duplicates:
+                        continue
+                    
+                    similarity = similarity_chunk[i][j]
+                    
+                    if similarity >= self.title_threshold:
+                        # Title similar! Check metadata
+                        metadata_match = self._check_metadata_match(df.iloc[global_i], df.iloc[global_j])
+                        
+                        if metadata_match:
+                            # Confirmed duplicate
+                            confirmed_duplicates.add(global_j)
+                            logger.debug(
+                                f"✓ Confirmed duplicate (similarity={similarity:.3f}): "
+                                f"record {global_i} == {global_j}"
+                            )
+                        else:
+                            # Needs manual review
+                            needs_review.append({
+                                'index_1': int(df.iloc[global_i]['_original_index']),
+                                'index_2': int(df.iloc[global_j]['_original_index']),
+                                'title_1': str(titles.iloc[global_i]),
+                                'title_2': str(titles.iloc[global_j]),
+                                'similarity': float(similarity),
+                                'reason': 'Title similar but metadata mismatch',
+                                **self._extract_metadata_comparison(df.iloc[global_i], df.iloc[global_j])
+                            })
+        
+        # Remove confirmed duplicates
+        df_result = df.iloc[[i for i in range(len(df)) if i not in confirmed_duplicates]].copy()
+        
+        logger.info(
+            f"✅ Chunked processing complete: {len(confirmed_duplicates)} confirmed duplicates, "
+            f"{len(needs_review)} need review"
+        )
+        
+        return df_result, len(confirmed_duplicates), needs_review
