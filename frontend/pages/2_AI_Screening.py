@@ -425,7 +425,7 @@ def main():
     
     # Header
     st.markdown('<h1 class="main-header">AI Screening</h1>', unsafe_allow_html=True)
-    st.markdown("**Parallel AI-powered article screening with configurable workers (1-16).**")
+    st.markdown("**Parallel AI-powered article screening with configurable workers (1-8).**")
     
     st.markdown("---")
     
@@ -691,17 +691,17 @@ def main():
             "Parallel Workers",
             min_value=1,
             max_value=16,
-            value=8,
-            help="Number of concurrent workers. Recommended range for stability: 8-16 workers. Higher values may cause SSL connection errors."
+            value=4,
+            help="Number of concurrent workers. Recommended: ≤4 for stability. Higher values may cause connection errors."
         )
         
         # Dynamic caption based on worker count
-        if num_workers <= 10:
-            st.caption(f"✓ Stable: ~{num_workers * 20} articles/hour. Minimal connection errors.")
-        elif num_workers <= 14:
-            st.caption(f"✓ Balanced: ~{num_workers * 20} articles/hour. Good speed with acceptable stability.")
+        if num_workers <= 4:
+            st.caption(f"✅ Recommended: ~{num_workers * 20} articles/hour. Optimal stability.")
+        elif num_workers <= 8:
+            st.caption(f"⚠️ Moderate: ~{num_workers * 20} articles/hour. May experience occasional connection errors.")
         else:
-            st.caption(f"⚡ Fast: ~{num_workers * 20} articles/hour. Maximum safe speed, monitor for errors.")
+            st.caption(f"⚠️ High Risk: ~{num_workers * 20} articles/hour. Frequent connection errors likely.")
     
     st.markdown("---")
     
@@ -909,7 +909,7 @@ def main():
         3. **Choose Model**: 
            - Reasoning model: Better quality, explains decisions
            - Non-reasoning: Faster, direct yes/no decisions
-        4. **Set Workers**: 8 workers recommended for optimal speed
+        4. **Set Workers**: 4 workers recommended for stability (≤4 to avoid connection errors)
         5. **Start Screening**: Monitor progress in real-time
         
         ### Tips for Better Results
