@@ -185,7 +185,7 @@ class ScreeningResult(Base):
     task = relationship("Task", back_populates="screening_results")
     
     # Article info
-    title = Column(Text, nullable=False)
+    title = Column(Text, nullable=True, default="[No Title]")  # Allow NULL, provide default
     abstract = Column(Text, nullable=True)
     authors = Column(Text, nullable=True)
     journal = Column(String(255), nullable=True)

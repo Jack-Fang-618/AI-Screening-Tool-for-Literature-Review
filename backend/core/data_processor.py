@@ -202,10 +202,35 @@ class DataProcessor:
         try:
             # Read RIS file
             with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+                
+                # Check if file is empty
+                if not content.strip():
+                    raise ValueError(
+                        "RIS file is empty. Please ensure the file contains valid RIS entries."
+                    )
+                
+                # Check for basic RIS format markers
+                if not any(marker in content for marker in ['TY  -', 'T1  -', 'TI  -', 'ER  -']):
+                    raise ValueError(
+                        "File does not appear to be in valid RIS format. "
+                        "RIS files should contain tags like 'TY  -', 'TI  -', 'ER  -'. "
+                        "Please verify the file format or try exporting again from your database."
+                    )
+                
+                # Reset file pointer and parse
+                f.seek(0)
                 entries = list(rispy.load(f))
             
             if not entries:
-                raise ValueError("No entries found in RIS file")
+                raise ValueError(
+                    "No entries found in RIS file. The file may be corrupted or in an unsupported format. "
+                    "Common issues:\n"
+                    "1. File encoding might be incorrect (try exporting as UTF-8)\n"
+                    "2. RIS tags might be malformed (check for proper spacing after tags)\n"
+                    "3. File might have been truncated during download\n"
+                    "Try re-exporting the file from your reference database."
+                )
             
             logger.info(f"Parsed RIS file: {len(entries)} entries")
             
@@ -230,10 +255,24 @@ class DataProcessor:
                     return df
                 except:
                     continue
+            # If all encodings failed
+            raise ValueError(
+                "Unable to parse RIS file with any encoding. "
+                "The file might be corrupted or in a non-standard format. "
+                "Please try:\n"
+                "1. Re-exporting from your reference manager with UTF-8 encoding\n"
+                "2. Opening the file in a text editor to verify RIS format\n"
+                "3. Using a different export format (CSV or Excel)"
+            )
+        except ValueError:
+            # Re-raise ValueError with helpful messages (already formatted above)
             raise
         except Exception as e:
             logger.error(f"Failed to parse RIS file: {e}")
-            raise
+            raise ValueError(
+                f"RIS file parsing failed: {str(e)}. "
+                "Please ensure the file is a valid RIS export from PubMed, Scopus, Web of Science, or similar databases."
+            )
     
     def parse_nbib(
         self,

@@ -39,8 +39,17 @@ class ScreeningConfig:
     confidence_threshold: float = 0.5
     manual_review_threshold: float = 0.6
     batch_size: int = 50
-    max_workers: int = 30  # Conservative setting with safety margin (was 40)
+    max_workers: int = 4  # Default 4 workers (stable). Max recommended: 8. Reduce to 2 if experiencing network errors
     checkpoint_interval: int = 100  # Save checkpoint every N articles
+    
+    def __post_init__(self):
+        """Validate and warn about worker count"""
+        if self.max_workers > 8:
+            logger.warning(
+                f"⚠️ Worker count set to {self.max_workers}. High worker counts may cause "
+                f"network instability and rate limiting. Recommended: 2-4 for stable production, "
+                f"max 8 for faster processing with acceptable retry risk."
+            )
 
 
 @dataclass
@@ -385,32 +394,57 @@ Confidence: [0.0-1.0]"""
         start_time = time.time()
         total_articles = len(articles)
         
-        logger.info(f"Starting parallel screening of {total_articles} articles with {self.config.max_workers} workers")
+        logger.info(
+            f"🚀 Starting parallel screening: {total_articles} articles with {self.config.max_workers} workers. "
+            f"Model: {self.llm_client.model}. "
+            f"⚠️ Note: High worker counts (>4) may cause network instability. Recommended: 2-4 workers for production."
+        )
         
         decisions = []
         completed = 0
+        errors = 0
         
         # Parallel execution
         with ThreadPoolExecutor(max_workers=self.config.max_workers) as executor:
             # Submit all tasks
             future_to_article = {
-                executor.submit(self.screen_single_article, title, abstract): (title, abstract)
-                for title, abstract in articles
+                executor.submit(self.screen_single_article, title, abstract): (idx, title, abstract)
+                for idx, (title, abstract) in enumerate(articles)
             }
             
             # Process completed tasks
             for future in as_completed(future_to_article):
-                decision = future.result()
-                decisions.append(decision)
-                completed += 1
-                
-                # Progress callback
-                if progress_callback:
-                    progress_callback(completed, total_articles, decision)
-                
-                # Checkpoint
-                if self.checkpoint_dir and completed % self.config.checkpoint_interval == 0:
-                    self._save_checkpoint(decisions, completed, total_articles)
+                try:
+                    decision = future.result()
+                    decisions.append(decision)
+                    completed += 1
+                    
+                    # Log progress at intervals
+                    if completed % 10 == 0 or completed == total_articles:
+                        logger.info(
+                            f"📊 Progress: {completed}/{total_articles} ({completed/total_articles*100:.1f}%) - "
+                            f"Errors: {errors}"
+                        )
+                    
+                    # Progress callback
+                    if progress_callback:
+                        progress_callback(completed, total_articles, decision)
+                    
+                    # Checkpoint
+                    if self.checkpoint_dir and completed % self.config.checkpoint_interval == 0:
+                        self._save_checkpoint(decisions, completed, total_articles)
+                        logger.info(f"💾 Checkpoint saved at {completed}/{total_articles}")
+                        
+                except Exception as e:
+                    idx, title, abstract = future_to_article[future]
+                    errors += 1
+                    logger.error(
+                        f"❌ Article #{idx} failed: {str(e)[:150]}. "
+                        f"Title: {title[:100] if title else 'N/A'}. "
+                        f"Total errors so far: {errors}/{completed}"
+                    )
+                    # Continue processing other articles
+                    completed += 1
         
         # Calculate metrics
         total_time = time.time() - start_time

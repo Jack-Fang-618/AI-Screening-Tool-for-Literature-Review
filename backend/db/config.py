@@ -143,7 +143,9 @@ def get_db() -> Generator[Session, None, None]:
     db = SessionLocal()
     try:
         yield db
-        db.commit()
+        # Only commit if there's an active transaction
+        if db.in_transaction():
+            db.commit()
     except Exception as e:
         db.rollback()
         logger.error(f"❌ Database error: {e}")

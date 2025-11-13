@@ -866,17 +866,26 @@ async def get_columns(dataset_id: str):
 
 
 @router.get("/export/{dataset_id}")
-async def export_dataset(dataset_id: str, format: str = "csv"):
+async def export_dataset(dataset_id: str, format: str = "csv", db: Session = Depends(get_db_session)):
     """
     Export dataset to file
     
     Supports CSV, Excel formats
     Returns file content as downloadable response
     """
-    if dataset_id not in datasets_storage:
-        raise HTTPException(status_code=404, detail=f"Dataset {dataset_id} not found")
+    # Try to get from database first (supports cleaned/deduplicated datasets)
+    db_dataset = db.query(Dataset).filter_by(id=dataset_id).first()
     
-    df = datasets_storage[dataset_id]['dataframe']
+    if db_dataset:
+        # Load DataFrame from database JSON
+        df = pd.read_json(db_dataset.data_json, orient='records')
+        filename_base = db_dataset.original_filename.rsplit('.', 1)[0] if db_dataset.original_filename else dataset_id
+    elif dataset_id in datasets_storage:
+        # Fall back to legacy in-memory storage
+        df = datasets_storage[dataset_id]['dataframe']
+        filename_base = datasets_storage[dataset_id]['filename'].rsplit('.', 1)[0]
+    else:
+        raise HTTPException(status_code=404, detail=f"Dataset {dataset_id} not found")
     
     # Normalize format
     if format in ["excel", "xlsx"]:
@@ -907,7 +916,7 @@ async def export_dataset(dataset_id: str, format: str = "csv"):
         
         # Return file as download
         from fastapi.responses import Response
-        filename = f"{datasets_storage[dataset_id]['filename'].rsplit('.', 1)[0]}_export.{file_format}"
+        filename = f"{filename_base}_export.{file_format}"
         
         return Response(
             content=content,

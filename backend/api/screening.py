@@ -752,10 +752,19 @@ def _run_screening_task(
         )
         
         # Prepare articles (skip if resuming)
-        articles = [
-            (row['title'], row['abstract'])
-            for _, row in df.iterrows()
-        ]
+        # Add defensive None checks to prevent "NoneType is not subscriptable" errors
+        articles = []
+        for idx, row in df.iterrows():
+            # Safely extract title and abstract with fallback values
+            title = row.get('title') if isinstance(row.get('title'), str) else "[No Title]"
+            abstract = row.get('abstract') if isinstance(row.get('abstract'), str) else ""
+            
+            # Skip articles with no meaningful content
+            if not abstract or abstract.strip() == "":
+                logger.warning(f"Row {idx} has no abstract, using placeholder")
+                abstract = "[No Abstract Available]"
+            
+            articles.append((title, abstract))
         
         if resume_from > 0:
             articles = articles[resume_from:]
@@ -776,9 +785,12 @@ def _run_screening_task(
                     db_decision = _map_api_decision_to_db(decision.decision)
                     
                     # Create ScreeningResult record (no article_id field in model)
+                    # Ensure title is not None (use default if missing)
+                    article_title = decision.title if decision.title else "[No Title]"
+                    
                     db_result = DBScreeningResult(
                         task_id=task_id,
-                        title=decision.title,
+                        title=article_title,
                         abstract=decision.abstract,
                         decision=db_decision,
                         confidence=decision.confidence,
@@ -898,14 +910,26 @@ def _run_screening_task(
         # Mark task as completed
         task_manager.complete_task(task_id, result)
         
-        logger.info(f"✅ Screening task {task_id} completed successfully")
+        # Log final summary with worker info
+        logger.info(
+            f"✅ Screening task {task_id} completed successfully. "
+            f"Processed: {result.screened_count}/{result.total_articles}, "
+            f"Errors: {result.errors}, "
+            f"Workers used: {config.max_workers}, "
+            f"Total cost: HKD ${result.total_cost:.4f}, "
+            f"Time: {result.total_time:.1f}s"
+        )
         
     except InterruptedError as e:
-        logger.warning(f"Task {task_id} cancelled: {e}")
+        logger.warning(f"🛑 Task {task_id} cancelled: {e}")
         task_manager.cancel_task(task_id)
         
     except Exception as e:
-        logger.error(f"Screening task {task_id} failed: {e}")
+        logger.error(
+            f"❌ CRITICAL: Screening task {task_id} failed with error: {type(e).__name__}: {str(e)[:300]}. "
+            f"Worker count: {config.max_workers}. "
+            f"If this is a network/connection error, consider reducing worker count to 2-4."
+        )
         task_manager.fail_task(task_id, str(e))
 
 

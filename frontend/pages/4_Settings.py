@@ -76,7 +76,7 @@ if 'settings' not in st.session_state:
         'inclusion_criteria': '',
         'exclusion_criteria': '',
         'auto_save': True,
-        'default_workers': 8,
+        'default_workers': 4,
         'default_model': 'grok-4-fast-reasoning'
     }
 
@@ -441,9 +441,22 @@ def main():
                 "Default Parallel Workers",
                 min_value=1,
                 max_value=8,
-                value=st.session_state.settings.get('default_workers', 8),
-                help="Default number of concurrent workers for screening"
+                value=st.session_state.settings.get('default_workers', 4),
+                help="Number of concurrent API requests. Lower = more stable, Higher = faster but may hit rate limits"
             )
+            
+            # Add helpful guidance
+            if default_workers > 4:
+                st.warning(
+                    f"⚠️ Using {default_workers} workers. If you experience network errors or failures, "
+                    f"try reducing to 2-4 workers for better stability.",
+                    icon="⚠️"
+                )
+            elif default_workers <= 4:
+                st.success(
+                    f"✅ {default_workers} workers is a stable configuration with good reliability.",
+                    icon="✅"
+                )
         
         st.markdown("---")
         
@@ -479,7 +492,7 @@ def main():
                     'inclusion_criteria': '',
                     'exclusion_criteria': '',
                     'auto_save': True,
-                    'default_workers': 8,
+                    'default_workers': 4,
                     'default_model': 'grok-4-fast-reasoning'
                 }
                 st.rerun()

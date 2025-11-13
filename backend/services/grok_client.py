@@ -151,36 +151,72 @@ class GrokClient:
                 
                 if status_code == 429:  # Rate limit
                     wait_time = 2 ** attempt  # Exponential backoff
-                    logger.warning(f"Rate limit hit, waiting {wait_time}s (attempt {attempt + 1}/{self.max_retries})")
+                    logger.warning(
+                        f"⚠️ Rate limit hit (HTTP 429) - Model: {self.model}, "
+                        f"Waiting {wait_time}s (attempt {attempt + 1}/{self.max_retries}). "
+                        f"Consider reducing worker count if this happens frequently."
+                    )
                     time.sleep(wait_time)
                     last_exception = e
                     
                 elif status_code == 401:  # Authentication error
-                    logger.error("Authentication failed - check API key")
+                    logger.error("❌ Authentication failed - check API key")
                     raise ValueError("Invalid API key") from e
                     
                 elif status_code >= 500:  # Server error
                     wait_time = 2 ** attempt
-                    logger.warning(f"Server error {status_code}, retrying in {wait_time}s")
+                    logger.warning(
+                        f"⚠️ X.AI server error {status_code}, retrying in {wait_time}s "
+                        f"(attempt {attempt + 1}/{self.max_retries})"
+                    )
                     time.sleep(wait_time)
                     last_exception = e
                     
                 else:
                     # Other HTTP errors
-                    logger.error(f"HTTP error {status_code}: {e.response.text}")
+                    logger.error(
+                        f"❌ HTTP error {status_code}: {e.response.text[:200]}"
+                    )
                     raise
                     
-            except requests.exceptions.Timeout as e:
-                logger.warning(f"Request timeout (attempt {attempt + 1}/{self.max_retries})")
+            except requests.exceptions.ConnectionError as e:
+                # Network connection issues
+                wait_time = min(2 ** attempt, 10)  # Cap at 10s
+                logger.warning(
+                    f"⚠️ Network connection error: {str(e)[:150]}. "
+                    f"Retrying in {wait_time}s (attempt {attempt + 1}/{self.max_retries}). "
+                    f"This may indicate network instability or too many parallel workers."
+                )
                 last_exception = e
-                time.sleep(1)
+                time.sleep(wait_time)
+                
+            except requests.exceptions.Timeout as e:
+                wait_time = min(2 ** attempt, 8)  # Cap at 8s
+                logger.warning(
+                    f"⚠️ Request timeout after {self.timeout}s "
+                    f"(attempt {attempt + 1}/{self.max_retries}). "
+                    f"Retrying in {wait_time}s. Consider increasing timeout or reducing worker count."
+                )
+                last_exception = e
+                time.sleep(wait_time)
                 
             except requests.exceptions.RequestException as e:
-                logger.error(f"Request failed: {e}")
+                # Catch-all for other request errors
+                wait_time = min(2 ** attempt, 10)
+                logger.error(
+                    f"⚠️ Request failed: {type(e).__name__}: {str(e)[:150]}. "
+                    f"Retrying in {wait_time}s (attempt {attempt + 1}/{self.max_retries})"
+                )
                 last_exception = e
-                time.sleep(2 ** attempt)
+                time.sleep(wait_time)
         
         # All retries failed
+        logger.error(
+            f"❌ CRITICAL: All {self.max_retries} retry attempts failed. "
+            f"Last error: {type(last_exception).__name__}: {str(last_exception)[:200]}. "
+            f"Model: {self.model}. "
+            f"Recommendation: If using high worker count (>4), try reducing to 2-4 workers for better stability."
+        )
         raise Exception(f"Failed after {self.max_retries} attempts: {last_exception}")
     
     def screen_article(self, prompt: str) -> Dict:
