@@ -608,7 +608,7 @@ class SmartDeduplicator:
             chunk_matrix = tfidf_matrix[start_idx:end_idx]
             remaining_matrix = tfidf_matrix[end_idx:]
             
-            if len(remaining_matrix) == 0:
+            if remaining_matrix.shape[0] == 0:
                 continue
             
             # Compute similarity only between chunk and remaining
