@@ -14,7 +14,7 @@ from pathlib import Path
 import sys
 
 # Add parent directory to path
-sys.path.append(str(Path(__file__).parent.parent))
+sys.path.append(str(Path(__file__).parent.parent.parent))
 
 # Page configuration
 st.set_page_config(
@@ -82,7 +82,7 @@ if 'settings' not in st.session_state:
 
 def load_settings():
     """Load settings from file"""
-    settings_file = Path(__file__).parent.parent / 'config' / 'user_settings.json'
+    settings_file = Path(__file__).parent.parent.parent / 'config' / 'user_settings.json'
     
     if settings_file.exists():
         try:
@@ -97,7 +97,7 @@ def load_settings():
 
 def save_settings():
     """Save settings to file"""
-    settings_file = Path(__file__).parent.parent / 'config' / 'user_settings.json'
+    settings_file = Path(__file__).parent.parent.parent / 'config' / 'user_settings.json'
     settings_file.parent.mkdir(exist_ok=True)
     
     try:
@@ -111,7 +111,7 @@ def save_settings():
 def check_env_api_key():
     """Check if API key exists in .env file"""
     # Path: frontend/pages/4_Settings.py -> pages/ -> frontend/ -> Core function/ -> .env
-    env_file = Path(__file__).parent.parent / '.env'
+    env_file = Path(__file__).parent.parent.parent / '.env'
     
     if env_file.exists():
         try:
@@ -128,7 +128,7 @@ def check_env_api_key():
 
 def update_env_api_key(api_key):
     """Update .env file with new API key"""
-    env_file = Path(__file__).parent.parent / '.env'
+    env_file = Path(__file__).parent.parent.parent / '.env'
     
     try:
         # Read existing .env content
@@ -512,8 +512,8 @@ def main():
     
     # Settings file location
     with st.expander("📁 Settings File Location"):
-        settings_file = Path(__file__).parent.parent / 'config' / 'user_settings.json'
-        env_file = Path(__file__).parent.parent / '.env'
+        settings_file = Path(__file__).parent.parent.parent / 'config' / 'user_settings.json'
+        env_file = Path(__file__).parent.parent.parent / '.env'
         
         st.markdown(f"""
         **User Settings:** `{settings_file}`

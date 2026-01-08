@@ -36,6 +36,7 @@ class ScreeningDecision(str, enum.Enum):
     RELEVANT = "relevant"  # Legacy support
     IRRELEVANT = "irrelevant"  # Legacy support
     UNCERTAIN = "uncertain"  # Legacy support
+    NEEDS_FULL_TEXT = "needs_full_text"
 
 
 class DatasetStatus(str, enum.Enum):
@@ -145,6 +146,8 @@ class Task(Base):
     excluded_count = Column(Integer, default=0)
     manual_review_count = Column(Integer, default=0)
     error_count = Column(Integer, default=0)
+    arbiter_count = Column(Integer, default=0)  # NEW: Tracks how many articles needed arbiter
+    consensus_count = Column(Integer, default=0) # NEW: Tracks how many reached consensus
     
     # Cost tracking
     total_cost = Column(Float, default=0.0)

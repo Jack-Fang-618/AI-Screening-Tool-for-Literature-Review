@@ -17,7 +17,7 @@ from pathlib import Path
 import sys
 
 # Add parent directory to path
-sys.path.append(str(Path(__file__).parent.parent))
+sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from frontend.utils.api_client import APIClient
 
@@ -29,7 +29,7 @@ if 'api_client' not in st.session_state:
 api_client = st.session_state.api_client
 
 # DEBUG VERSION MARKER
-st.sidebar.info("🚀 Running from: root pages/ | Version: v2.1.0-DualLLM")
+st.sidebar.info("📂 Running from: frontend/pages/ | Version: v2.1.0-DualLLM")
 
 # Page configuration
 st.set_page_config(
@@ -149,7 +149,7 @@ if 'my_task_ids' not in st.session_state:
 def load_settings_from_file():
     """Load settings from JSON file if not already in session state"""
     if not st.session_state.settings:
-        settings_file = Path(__file__).parent.parent / 'config' / 'user_settings.json'
+        settings_file = Path(__file__).parent.parent.parent / 'config' / 'user_settings.json'
         
         if settings_file.exists():
             try:

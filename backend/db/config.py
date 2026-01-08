@@ -58,17 +58,27 @@ DATABASE_URL = get_database_url()
 # Engine configuration based on database type
 if DATABASE_URL.startswith('sqlite'):
     # SQLite configuration
+    from sqlalchemy.pool import NullPool
     engine = create_engine(
         DATABASE_URL,
-        connect_args={"check_same_thread": False},  # Allow multi-threading
-        poolclass=StaticPool,  # Single connection pool for SQLite
-        echo=os.getenv('SQL_ECHO', 'false').lower() == 'true'  # SQL logging
+        connect_args={
+            "check_same_thread": False,
+            "timeout": 30  # Increase timeout to 30s to handle concurrency
+        },
+        # NullPool is best for file-based SQLite in multi-threaded apps
+        # It ensures each session gets a fresh connection, letting 
+        # SQLite's own file locking (and WAL mode) handle concurrency.
+        poolclass=NullPool,
+        echo=os.getenv('SQL_ECHO', 'false').lower() == 'true'
     )
     
-    # Enable foreign keys for SQLite
+    # Enable WAL mode and foreign keys for SQLite
     @event.listens_for(engine, "connect")
     def set_sqlite_pragma(dbapi_conn, connection_record):
         cursor = dbapi_conn.cursor()
+        # WAL mode allows concurrent readers and one writer
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA synchronous=NORMAL")
         cursor.execute("PRAGMA foreign_keys=ON")
         cursor.close()
         

@@ -179,7 +179,8 @@ class TaskManager:
         self,
         task_id: str,
         processed_items: int,
-        result_data: Optional[Any] = None
+        result_data: Optional[Any] = None,
+        skip_db: bool = False
     ):
         """
         Update task progress
@@ -188,9 +189,10 @@ class TaskManager:
             task_id: Task ID
             processed_items: Number of items processed so far
             result_data: Optional partial result data
+            skip_db: If True, only update in-memory state (useful if DB already updated)
         """
         # Update in database
-        if self.use_database:
+        if self.use_database and not skip_db:
             try:
                 with get_db() as db:
                     db_task = db.query(Task).filter_by(id=task_id).first()
@@ -384,27 +386,35 @@ class TaskManager:
         """
         # Try database first
         if self.use_database:
-            try:
-                with get_db() as db:
-                    db_task = db.query(Task).filter_by(id=task_id).first()
-                    if db_task:
-                        # Convert database task to TaskInfo
-                        return TaskInfo(
-                            task_id=db_task.id,
-                            status=self._from_db_status(db_task.status),
-                            created_at=db_task.created_at.isoformat(),
-                            started_at=db_task.started_at.isoformat() if db_task.started_at else None,
-                            completed_at=db_task.completed_at.isoformat() if db_task.completed_at else None,
-                            total_items=db_task.total_items,
-                            processed_items=db_task.processed_items,
-                            progress_percent=db_task.progress_percent,
-                            result=None,  # Result stored separately
-                            error=db_task.error_message,
-                            metadata=db_task.config or {},
-                            cancel_requested=False  # Would need separate flag
-                        )
-            except Exception as e:
-                logger.error(f"Failed to get task from database: {e}")
+            # Retry once on InterfaceError or OperationalError (locked)
+            for attempt in range(2):
+                try:
+                    with get_db() as db:
+                        db_task = db.query(Task).filter_by(id=task_id).first()
+                        if db_task:
+                            # Convert database task to TaskInfo
+                            return TaskInfo(
+                                task_id=db_task.id,
+                                status=self._from_db_status(db_task.status),
+                                created_at=db_task.created_at.isoformat(),
+                                started_at=db_task.started_at.isoformat() if db_task.started_at else None,
+                                completed_at=db_task.completed_at.isoformat() if db_task.completed_at else None,
+                                total_items=db_task.total_items,
+                                processed_items=db_task.processed_items,
+                                progress_percent=db_task.progress_percent,
+                                result=None,  # Result stored separately
+                                error=db_task.error_message,
+                                metadata=db_task.config or {},
+                                cancel_requested=False  # Would need separate flag
+                            )
+                        break # Found nothing, but no error, so exit loop
+                except Exception as e:
+                    if attempt == 0:
+                        logger.warning(f"⚠️ Database access issue in get_task (attempt 1): {e}. Retrying...")
+                        import time
+                        time.sleep(0.1) # Small sleep before retry
+                    else:
+                        logger.error(f"❌ Failed to get task from database after retries: {e}")
         
         # Fallback to in-memory
         with self._lock:

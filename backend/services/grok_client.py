@@ -41,9 +41,9 @@ class GrokClient:
     Client for X.AI Grok API
     
     Supports:
-    - grok-4-fast-reasoning (recommended for screening)
-    - grok-4-fast-non-reasoning (fastest, non-reasoning)
-    - grok-4 (standard, most expensive)
+    - grok-4-1-fast-reasoning (latest recommended)
+    - grok-4-1-fast-non-reasoning
+    - grok-4 (standard)
     """
     
     BASE_URL = "https://api.x.ai/v1"
@@ -51,7 +51,7 @@ class GrokClient:
     def __init__(
         self,
         api_key: Optional[str] = None,
-        model: str = "grok-4-fast-reasoning",
+        model: str = "grok-4-1-fast-reasoning",
         temperature: float = 0.1,
         max_tokens: Optional[int] = None,
         timeout: int = 30,
@@ -62,7 +62,7 @@ class GrokClient:
         
         Args:
             api_key: X.AI API key (or from XAI_API_KEY env var)
-            model: Model name (default: grok-4-fast-reasoning)
+            model: Model name (default: grok-4-1-fast-reasoning)
             temperature: Temperature for generation (0.0-2.0)
             max_tokens: Maximum tokens to generate (None = no limit)
             timeout: Request timeout in seconds
@@ -91,6 +91,7 @@ class GrokClient:
         messages: List[Dict[str, str]],
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
+        model: Optional[str] = None,
         stream: bool = False
     ) -> GrokResponse:
         """
@@ -100,6 +101,7 @@ class GrokClient:
             messages: List of message dicts with 'role' and 'content'
             temperature: Override default temperature
             max_tokens: Override default max_tokens
+            model: Override default model
             stream: Enable streaming (not yet implemented)
             
         Returns:
@@ -115,7 +117,7 @@ class GrokClient:
         }
         
         payload = {
-            "model": self.model,
+            "model": model or self.model,
             "messages": messages,
             "temperature": temperature if temperature is not None else self.temperature,
             "stream": stream
@@ -219,18 +221,19 @@ class GrokClient:
         )
         raise Exception(f"Failed after {self.max_retries} attempts: {last_exception}")
     
-    def screen_article(self, prompt: str) -> Dict:
+    def screen_article(self, prompt: str, model: Optional[str] = None) -> Dict:
         """
         Screen article using Grok (convenience method for screener)
         
         Args:
             prompt: Screening prompt with article title/abstract
+            model: Optional model override
             
         Returns:
             Dict with content, usage, model info
         """
         messages = [{"role": "user", "content": prompt}]
-        response = self.chat_completion(messages)
+        response = self.chat_completion(messages, model=model)
         
         return {
             'content': response.content,
@@ -321,8 +324,18 @@ class GrokClient:
         Returns:
             Dict with cost breakdown
         """
-        # Pricing for current model (HKD per 1M tokens)
+        # Pricing for current model (HKD per 1M tokens) - Updated Jan 2026
         pricing = {
+            'grok-4-1-fast-reasoning': {
+                'input': 0.2 * 7.78,
+                'cached_input': 0.05 * 7.78,
+                'output': 0.5 * 7.78
+            },
+            'grok-4-1-fast-non-reasoning': {
+                'input': 0.2 * 7.78,
+                'cached_input': 0.05 * 7.78,
+                'output': 0.5 * 7.78
+            },
             'grok-4-fast-reasoning': {
                 'input': 0.2 * 7.78,
                 'cached_input': 0.05 * 7.78,
@@ -340,7 +353,7 @@ class GrokClient:
             }
         }
         
-        model_pricing = pricing.get(self.model, pricing['grok-4-fast-reasoning'])
+        model_pricing = pricing.get(self.model, pricing['grok-4-1-fast-reasoning'])
         
         # Calculate costs
         uncached_tokens = max(0, input_tokens - cached_tokens)

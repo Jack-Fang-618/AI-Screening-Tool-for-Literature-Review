@@ -64,6 +64,9 @@ st.markdown("""
     .metric-card-uncertain {
         border-left: 4px solid #ffc107;
     }
+    .metric-card-fulltext {
+        border-left: 4px solid #17a2b8;
+    }
     .metric-card-cost {
         border-left: 4px solid #667eea;
     }
@@ -285,37 +288,29 @@ def main():
         # Metrics row - 4 columns for the 4 main metrics
         col1, col2, col3, col4 = st.columns(4)
         
-        # Get counts from status (backend returns included, excluded, manual_review)
-        # Note: Backend API returns 'included', 'excluded', 'manual_review' (not *_count)
+        # Get counts from status
         relevant = status.get('included', 0)
         irrelevant = status.get('excluded', 0)
-        uncertain = status.get('manual_review', 0)
-        total = status.get('total_articles', 0)
+        # Combine manual_review and full_text into one "Full Text Retrieval" category
+        fulltext_review = status.get('manual_review', 0)
         
         with col1:
             st.markdown('<div class="metric-card metric-card-relevant">', unsafe_allow_html=True)
             st.metric("Relevant", relevant)
-            if total > 0:
-                st.caption(f"{relevant/total*100:.1f}%")
             st.markdown('</div>', unsafe_allow_html=True)
         
         with col2:
             st.markdown('<div class="metric-card metric-card-irrelevant">', unsafe_allow_html=True)
             st.metric("Irrelevant", irrelevant)
-            if total > 0:
-                st.caption(f"{irrelevant/total*100:.1f}%")
             st.markdown('</div>', unsafe_allow_html=True)
         
         with col3:
-            st.markdown('<div class="metric-card metric-card-uncertain">', unsafe_allow_html=True)
-            st.metric("Uncertain", uncertain)
-            if total > 0:
-                st.caption(f"{uncertain/total*100:.1f}%")
+            st.markdown('<div class="metric-card metric-card-fulltext">', unsafe_allow_html=True)
+            st.metric("📖 Full Text Review", fulltext_review)
             st.markdown('</div>', unsafe_allow_html=True)
         
         with col4:
             st.markdown('<div class="metric-card metric-card-cost">', unsafe_allow_html=True)
-            # Status API returns 'current_cost', not 'total_cost'
             cost = status.get('current_cost', 0)
             st.metric("Est. Cost", f"~HKD ${cost:.2f}")
             st.markdown('</div>', unsafe_allow_html=True)
@@ -329,18 +324,23 @@ def main():
         if results.get('results'):
             df = pd.DataFrame(results['results'])
             
+            # Count Needs Full Text separately from Uncertain in the UI if possible
+            # Note: At this point, df['decision'] might contain 'needs_full_text' 
+            # if the API returned it correctly.
+            
             # Filters
             col1, col2, col3 = st.columns(3)
             
             with col1:
                 decision_filter = st.multiselect(
                     "Filter by Decision",
-                    options=['include', 'exclude', 'manual_review'],
-                    default=['include', 'exclude', 'manual_review'],
+                    options=['include', 'exclude', 'needs_full_text', 'manual_review'],
+                    default=['include', 'exclude', 'needs_full_text', 'manual_review'],
                     format_func=lambda x: {
                         'include': '✅ Relevant',
                         'exclude': '❌ Irrelevant',
-                        'manual_review': '⚠️ Uncertain'
+                        'needs_full_text': '📖 Full Text Review',
+                        'manual_review': '⚠️ Other Review'
                     }.get(x, x)
                 )
             
@@ -394,9 +394,19 @@ def main():
                     decision_map = {
                         'include': '✅ Relevant',
                         'exclude': '❌ Irrelevant',
-                        'manual_review': '⚠️ Uncertain'
+                        'manual_review': '⚠️ Uncertain',
+                        'needs_full_text': '📖 Needs Full Text'
                     }
                     display_df['decision'] = display_df['decision'].map(lambda x: decision_map.get(x, x))
+                
+                # Highlight Arbiter rulings and Needs Full Text
+                if 'reasoning' in display_df.columns:
+                    def highlight_reasoning(row):
+                        reason = str(row['reasoning'])
+                        if "[Arbiter Decision]" in reason:
+                            return f"⚖️ {reason}"
+                        return reason
+                    display_df['reasoning'] = display_df.apply(highlight_reasoning, axis=1)
                 
                 # Truncate abstract for display (full text in export)
                 if 'abstract' in display_df.columns:

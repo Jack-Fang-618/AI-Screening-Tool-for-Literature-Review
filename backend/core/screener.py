@@ -39,6 +39,7 @@ class ScreeningConfig:
     confidence_threshold: float = 0.5
     manual_review_threshold: float = 0.6
     batch_size: int = 50
+    strategy: str = "single"  # "single" or "dual_arbiter"
     max_workers: int = 4  # Default 4 workers (stable). Max recommended: 8. Reduce to 2 if experiencing network errors
     checkpoint_interval: int = 100  # Save checkpoint every N articles
     
@@ -72,6 +73,9 @@ class ArticleDecision:
     total_tokens: int = 0
     # Cost
     api_cost: float = 0.0
+    # Strategy info
+    is_arbiter_decision: bool = False
+    is_consensus: bool = False
 
 
 @dataclass
@@ -111,18 +115,30 @@ class AIScreener:
     - Comprehensive cost tracking
     """
     
-    # Model pricing (per 1M tokens) - November 2025 - HKD (USD * 7.78 exchange rate)
+    # Model pricing (per 1M tokens) - January 2026 - HKD (USD * 7.78 exchange rate)
     MODEL_PRICING = {
-        # Grok 4 Fast series - Latest models (November 2025) - BEST for screening!
-        'grok-4-fast-reasoning': {
+        # Grok 4.1 Fast series - Latest models (January 2026) - BEST for screening!
+        'grok-4-1-fast-reasoning': {
             'input': 0.2 * 7.78,        # USD $0.20 → HKD $1.556
             'cached_input': 0.05 * 7.78,  # USD $0.05 → HKD $0.389
             'output': 0.5 * 7.78          # USD $0.50 → HKD $3.89
         },
-        'grok-4-fast-non-reasoning': {
+        'grok-4-1-fast-non-reasoning': {
             'input': 0.2 * 7.78,        # USD $0.20 → HKD $1.556
             'cached_input': 0.05 * 7.78,  # USD $0.05 → HKD $0.389
             'output': 0.5 * 7.78          # USD $0.50 → HKD $3.89
+        },
+        
+        # Backward compatibility for old names
+        'grok-4-fast-reasoning': {
+            'input': 0.2 * 7.78,
+            'cached_input': 0.05 * 7.78,
+            'output': 0.5 * 7.78
+        },
+        'grok-4-fast-non-reasoning': {
+            'input': 0.2 * 7.78,
+            'cached_input': 0.05 * 7.78,
+            'output': 0.5 * 7.78
         },
         
         # Grok 4 Standard - More expensive
@@ -197,14 +213,16 @@ Title: {title}
 Abstract: {abstract}
 
 INSTRUCTIONS:
-1. Carefully read the title and abstract
-2. Evaluate against the inclusion and exclusion criteria
-3. Provide your decision as one of: "Relevant", "Irrelevant", or "Uncertain"
-4. Provide a brief reason (max 50 words)
-5. Assess your confidence (0.0-1.0)
+1. Carefully read the title and abstract.
+2. Evaluate against the inclusion and exclusion criteria.
+3. If the abstract contains insufficient information to make a definitive decision (e.g., missing population details, unclear intervention):
+   - Select "Needs Full Text" if the article might be relevant but the abstract lacks necessary details to confirm.
+4. Provide your decision as one of: "Relevant", "Irrelevant", or "Needs Full Text".
+5. Provide a brief reason (max 50 words).
+6. Assess your confidence (0.0-1.0).
 
 Respond in this exact format:
-Decision: [Relevant/Irrelevant/Uncertain]
+Decision: [Relevant/Irrelevant/Needs Full Text]
 Reason: [Brief explanation]
 Confidence: [0.0-1.0]"""
         
@@ -229,7 +247,12 @@ Confidence: [0.0-1.0]"""
         
         for line in lines:
             if line.startswith('Decision:'):
-                result['decision'] = line.split(':', 1)[1].strip()
+                decision_val = line.split(':', 1)[1].strip()
+                # Unified Mapping: Map 'Uncertain' to 'Needs Full Text' to simplify PRISMA flow
+                if decision_val.upper() == 'UNCERTAIN':
+                    result['decision'] = 'Needs Full Text'
+                else:
+                    result['decision'] = decision_val
             elif line.startswith('Reason:'):
                 result['reason'] = line.split(':', 1)[1].strip()
             elif line.startswith('Confidence:'):
@@ -241,12 +264,59 @@ Confidence: [0.0-1.0]"""
         # Fallback: look for decision keywords anywhere
         if result['decision'] == 'Uncertain':
             upper_response = response.upper()
-            if 'RELEVANT' in upper_response:
+            if 'NEEDS FULL TEXT' in upper_response:
+                result['decision'] = 'Needs Full Text'
+            elif 'RELEVANT' in upper_response:
                 result['decision'] = 'Relevant'
             elif 'IRRELEVANT' in upper_response:
                 result['decision'] = 'Irrelevant'
         
         return result
+    
+    def create_arbiter_prompt(
+        self,
+        title: str,
+        abstract: str,
+        decision_1: Dict,
+        decision_2: Dict
+    ) -> str:
+        """
+        Create prompt for Expert Arbiter to resolve conflict
+        """
+        inclusion_criteria = "\n".join([f"- {c}" for c in self.config.inclusion_criteria])
+        exclusion_criteria = "\n".join([f"- {c}" for c in self.config.exclusion_criteria])
+        
+        prompt = f"""You are an Expert Systematic Review Arbiter. Two junior screeners have analyzed an article and disagree. 
+Your job is to resolve the conflict by making a FINAL, authoritative decision.
+
+INCLUSION CRITERIA:
+{inclusion_criteria}
+
+EXCLUSION CRITERIA:
+{exclusion_criteria}
+
+ARTICLE:
+Title: {title}
+Abstract: {abstract}
+
+DISAGREEMENT:
+Screener A Decision: {decision_1['decision']} (Confidence: {decision_1['confidence']})
+Screener A Reason: {decision_1['reason']}
+
+Screener B Decision: {decision_2['decision']} (Confidence: {decision_2['confidence']})
+Screener B Reason: {decision_2['reason']}
+
+INSTRUCTIONS:
+1. Critically analyze the article against criteria.
+2. Evaluate reasoning from both Screeners.
+3. Decide if the article is "Relevant", "Irrelevant", or "Needs Full Text".
+4. Explain WHY you chose one over the other.
+
+Respond in this exact format:
+Decision: [Relevant/Irrelevant/Needs Full Text]
+Reason: [Your final verdict and critique of screeners]
+Confidence: [0.0-1.0]"""
+        return prompt
     
     def calculate_cost(
         self,
@@ -288,19 +358,21 @@ Confidence: [0.0-1.0]"""
         
         return total_input_cost + output_cost
     
-    def screen_single_article(
+    def _screen_standard(
         self,
         title: str,
         abstract: str,
-        max_retries: int = 3
+        max_retries: int = 3,
+        model_override: Optional[str] = None
     ) -> ArticleDecision:
         """
-        Screen single article with retry logic
+        Screen single article with retry logic (Standard Single Pass)
         
         Args:
             title: Article title
             abstract: Article abstract
             max_retries: Maximum retry attempts
+            model_override: Optional model to use/force
             
         Returns:
             ArticleDecision with screening result
@@ -313,8 +385,8 @@ Confidence: [0.0-1.0]"""
         
         for attempt in range(max_retries):
             try:
-                # Call LLM client (assumes screen_article method exists)
-                response = self.llm_client.screen_article(prompt)
+                # Call LLM client
+                response = self.llm_client.screen_article(prompt, model=model_override)
                 
                 # Parse response
                 parsed = self.parse_ai_response(response.get('content', ''))
@@ -334,7 +406,8 @@ Confidence: [0.0-1.0]"""
                 # Check if manual review needed
                 needs_manual_review = (
                     parsed['confidence'] < self.config.manual_review_threshold or
-                    parsed['decision'] == 'Uncertain'
+                    parsed['decision'] == 'Uncertain' or
+                    parsed['decision'] == 'Needs Full Text'
                 )
                 
                 return ArticleDecision(
@@ -375,6 +448,133 @@ Confidence: [0.0-1.0]"""
                     wait_time = 2 ** attempt
                     logger.warning(f"Retry {attempt + 1}/{max_retries} after {wait_time}s")
                     time.sleep(wait_time)
+
+    def screen_single_article(
+        self,
+        title: str,
+        abstract: str,
+        max_retries: int = 3
+    ) -> ArticleDecision:
+        """
+        Screen single article dispatching to appropriate strategy
+        """
+        if self.config.strategy == "dual_arbiter":
+            return self._screen_dual_arbiter(title, abstract, max_retries)
+        return self._screen_standard(title, abstract, max_retries)
+
+    def _screen_dual_arbiter(
+        self,
+        title: str,
+        abstract: str,
+        max_retries: int
+    ) -> ArticleDecision:
+        """
+        Dual-Agent + Arbiter Strategy
+        1. Two fast models screen in parallel
+        2. If agree -> Return result
+        3. If disagree -> Call arbiter (Strong Model)
+        """
+        # Step 1: Run two fast passes (using default fast model)
+        # We run them sequentially here to avoid nested thread pool issues, 
+        # or we could use a mini-executor. Since we are already in a worker, sequential is safer.
+        # But 'grok-4-fast-reasoning' is fast.
+        
+        # Pass 1
+        res1 = self._screen_standard(title, abstract, max_retries=max_retries)
+        if res1.decision == 'Error': return res1
+        
+        # Pass 2
+        res2 = self._screen_standard(title, abstract, max_retries=max_retries)
+        if res2.decision == 'Error': return res2 # Or use res1 if valid? Conservative: error.
+        
+        # Step 2: Compare
+        clean_d1 = res1.decision.upper().replace(' ', '_')
+        clean_d2 = res2.decision.upper().replace(' ', '_')
+        
+        # Simple agreement
+        agreed = (clean_d1 == clean_d2)
+        
+        # Calculate combined cost/tokens so far
+        total_input = res1.input_tokens + res2.input_tokens
+        total_output = res1.output_tokens + res2.output_tokens
+        total_reasoning = res1.reasoning_tokens + res2.reasoning_tokens
+        total_cost = res1.api_cost + res2.api_cost
+        
+        if agreed:
+            # Consensus reached
+            res1.input_tokens = total_input
+            res1.output_tokens = total_output
+            res1.reasoning_tokens = total_reasoning
+            res1.api_cost = total_cost
+            res1.total_tokens = total_input + total_output + total_reasoning
+            res1.reason = f"[Dual Consensus] {res1.reason}"
+            res1.is_consensus = True
+            return res1
+            
+        # Step 3: Arbiter (Disagreement)
+        logger.info(f"⚖️ Arbiter called for '{title[:30]}...' ({res1.decision} vs {res2.decision})")
+        
+        try:
+            # Prepare arbiter context
+            d1_info = {'decision': res1.decision, 'reason': res1.reason, 'confidence': res1.confidence}
+            d2_info = {'decision': res2.decision, 'reason': res2.reason, 'confidence': res2.confidence}
+            
+            arbiter_prompt = self.create_arbiter_prompt(title, abstract, d1_info, d2_info)
+            
+            # Use STRONGER model for arbiter
+            arbiter_model = "grok-4" # Standard Grok-4
+            
+            response = self.llm_client.screen_article(arbiter_prompt, model=arbiter_model)
+            parsed = self.parse_ai_response(response.get('content', ''))
+            
+            # Arbiter cost
+            usage = response.get('usage', {})
+            arb_input = usage.get('prompt_tokens', 0)
+            arb_output = usage.get('completion_tokens', 0)
+            arb_reasoning = max(0, usage.get('total_tokens', 0) - arb_input - arb_output)
+            arb_cost = self.calculate_cost(arb_input, arb_output, arb_reasoning, arbiter_model)
+            
+            # Combine all costs
+            final_cost = total_cost + arb_cost
+            final_input = total_input + arb_input
+            final_output = total_output + arb_output
+            final_reasoning = total_reasoning + arb_reasoning
+            
+            needs_review = (
+                parsed['confidence'] < self.config.manual_review_threshold or
+                parsed['decision'] == 'Uncertain' or
+                parsed['decision'] == 'Needs Full Text'
+            )
+            
+            desc = parsed['decision']
+            reason = f"[Arbiter Decision] {parsed['reason']} (Conflict: {res1.decision} vs {res2.decision})"
+            
+            return ArticleDecision(
+                title=title,
+                abstract=abstract,
+                decision=desc,
+                reason=reason,
+                confidence=parsed['confidence'],
+                needs_manual_review=needs_review,
+                timestamp=datetime.now().isoformat(),
+                provider=res1.provider,
+                model=arbiter_model,
+                reasoning_content=response.get('reasoning_content'),
+                input_tokens=final_input,
+                output_tokens=final_output,
+                reasoning_tokens=final_reasoning,
+                total_tokens=final_input + final_output + final_reasoning,
+                api_cost=final_cost,
+                is_arbiter_decision=True
+            )
+            
+        except Exception as e:
+            logger.error(f"Arbiter failed: {e}")
+            # Fallback to Manual Review
+            res1.decision = "Uncertain"
+            res1.reason = f"Arbiter Failed: {str(e)}. (Conflict: {res1.decision} vs {res2.decision})"
+            res1.needs_manual_review = True
+            return res1
     
     def screen_parallel(
         self,

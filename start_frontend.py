@@ -22,14 +22,16 @@ def main():
     frontend_app = Path(__file__).parent / "streamlit_app.py"
     
     # Launch Streamlit
+    port = os.environ.get("PORT", "8501")
+    
     subprocess.run([
         sys.executable,
         "-m",
         "streamlit",
         "run",
         str(frontend_app),
-        "--server.port=8501",
-        "--server.address=localhost",
+        f"--server.port={port}",
+        "--server.address=0.0.0.0",
         "--logger.level=error"
     ])
 

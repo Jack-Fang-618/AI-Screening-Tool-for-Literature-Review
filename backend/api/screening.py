@@ -53,6 +53,7 @@ class ScreeningDecision(str, Enum):
     INCLUDE = "include"
     EXCLUDE = "exclude"
     MANUAL_REVIEW = "manual_review"
+    NEEDS_FULL_TEXT = "needs_full_text"
 
 
 # ===== Request/Response Models =====
@@ -70,7 +71,8 @@ class StartScreeningRequest(BaseModel):
     """Request model to start screening task"""
     data_id: str  # ID of deduplicated dataset
     criteria: ScreeningCriteria
-    model: str = "grok-3"  # 'grok-3', 'grok-3-mini-fast', 'grok-4'
+    model: str = "grok-4-1-fast-reasoning"  # 'grok-4-1-fast-reasoning', 'grok-4-1-fast-non-reasoning'
+    strategy: str = "single"  # 'single' or 'dual_arbiter'
     num_workers: int = 8
     confidence_threshold: float = 0.8
     manual_review_threshold: float = 0.6
@@ -88,13 +90,13 @@ class ScreeningProgress(BaseModel):
     excluded: int
     manual_review: int
     errors: int
+    consensus_count: int = 0
+    arbiter_count: int = 0
     progress_percent: float
     estimated_time_remaining: Optional[float] = None  # seconds
     current_cost: float = 0.0
     estimated_total_cost: float = 0.0
     elapsed_time: float = 0.0  # seconds since start
-    current_cost: float
-    estimated_total_cost: float
 
 
 class ArticleScreeningResult(BaseModel):
@@ -233,6 +235,7 @@ async def start_screening(
         confidence_threshold=request.confidence_threshold,
         manual_review_threshold=request.manual_review_threshold,
         max_workers=request.num_workers,
+        strategy=request.strategy,
         checkpoint_interval=100
     )
     
@@ -330,6 +333,8 @@ async def get_screening_status(task_id: str, db: Session = Depends(get_db_sessio
     excluded = 0
     manual_review = 0
     errors = 0
+    consensus_count = 0
+    arbiter_count = 0
     current_cost = 0.0
     
     # Try database first (Task model has these fields after migration)
@@ -340,9 +345,11 @@ async def get_screening_status(task_id: str, db: Session = Depends(get_db_sessio
             excluded = db_task.excluded_count or 0
             manual_review = db_task.manual_review_count or 0
             errors = db_task.error_count or 0
+            consensus_count = db_task.consensus_count or 0
+            arbiter_count = db_task.arbiter_count or 0
             current_cost = db_task.total_cost or 0.0
         else:
-            # Fall back to legacy dict
+            # Fall back to legacy dict (doesn't have consensus/arbiter mapping yet)
             included = screening_data.get('included', 0)
             excluded = screening_data.get('excluded', 0)
             manual_review = screening_data.get('manual_review', 0)
@@ -377,6 +384,8 @@ async def get_screening_status(task_id: str, db: Session = Depends(get_db_sessio
         excluded=excluded,
         manual_review=manual_review,
         errors=errors,
+        consensus_count=consensus_count,
+        arbiter_count=arbiter_count,
         progress_percent=task.progress_percent,
         estimated_time_remaining=estimated_time_remaining,
         current_cost=current_cost,
@@ -674,21 +683,23 @@ async def resume_screening(task_id: str, background_tasks: BackgroundTasks):
 @router.get("/estimate-cost/{data_id}")
 async def estimate_screening_cost(
     data_id: str,
-    model: str = "grok-4-fast-reasoning"
+    model: str = "grok-4-1-fast-reasoning",
+    db: Session = Depends(get_db_session)
 ):
     """
     Estimate total cost before starting screening
     """
-    # Validate dataset
-    if data_id not in datasets_storage:
+    # Get dataset (database or legacy storage)
+    df = get_dataset_dataframe(data_id, db)
+    if df is None:
         raise HTTPException(status_code=404, detail=f"Dataset {data_id} not found")
     
-    df = datasets_storage[data_id]['dataframe']
-    
     # Estimate average tokens per article
-    # Rough estimate: ~200 tokens for title+abstract input, ~100 tokens output
-    avg_input_tokens = 200
-    avg_output_tokens = 100
+    # Conservative estimate for research abstracts:
+    # - Input: ~600 tokens (abstract + criteria prompt)
+    # - Output: ~200 tokens (reasoning models generate more output)
+    avg_input_tokens = 600
+    avg_output_tokens = 200
     
     # Initialize Grok client for cost estimation
     try:
@@ -708,7 +719,7 @@ async def estimate_screening_cost(
             'cost_per_article': cost_per_article,
             'estimated_total_cost': total_estimated_cost,
             'currency': 'HKD',
-            'note': 'This is a rough estimate based on average article length'
+            'note': 'This is a conservative estimate based on average article lengths (~800 total tokens per article)'
         }
         
     except Exception as e:
@@ -774,20 +785,15 @@ def _run_screening_task(
         def on_progress(completed, total, decision):
             actual_completed = completed + resume_from
             
-            # Update task progress
-            task_manager.update_progress(task_id, actual_completed)
-            
-            # Save individual screening result to database
+            # Save individual screening result AND update task stats in ONE transaction
             try:
                 from ..db import get_db
                 with get_db() as db:
-                    # Map decision to database enum
+                    # 1. Map decision to database enum
                     db_decision = _map_api_decision_to_db(decision.decision)
                     
-                    # Create ScreeningResult record (no article_id field in model)
-                    # Ensure title is not None (use default if missing)
+                    # 2. Create ScreeningResult record
                     article_title = decision.title if decision.title else "[No Title]"
-                    
                     db_result = DBScreeningResult(
                         task_id=task_id,
                         title=article_title,
@@ -803,33 +809,49 @@ def _run_screening_task(
                         api_cost=decision.api_cost
                     )
                     db.add(db_result)
-                    db.commit()
                     
-                    # Update Task model counts
+                    # 3. Update Task model in the SAME session
                     db_task = db.query(Task).filter_by(id=task_id).first()
                     if db_task:
+                        # Update basic progress
+                        db_task.processed_items = actual_completed
+                        db_task.progress_percent = (actual_completed / total * 100) if total > 0 else 0
+                        
+                        # Update counts
                         if decision.decision == 'Relevant':
                             db_task.included_count = (db_task.included_count or 0) + 1
                         elif decision.decision == 'Irrelevant':
                             db_task.excluded_count = (db_task.excluded_count or 0) + 1
-                        elif decision.decision == 'Uncertain' or decision.needs_manual_review:
+                        elif decision.decision in ['Uncertain', 'Needs Full Text'] or decision.needs_manual_review:
                             db_task.manual_review_count = (db_task.manual_review_count or 0) + 1
                         
                         if decision.decision == 'Error':
                             db_task.error_count = (db_task.error_count or 0) + 1
+                        
+                        # Update dual-AI metrics
+                        if getattr(decision, 'is_consensus', False):
+                            db_task.consensus_count = (db_task.consensus_count or 0) + 1
+                        if getattr(decision, 'is_arbiter_decision', False):
+                            db_task.arbiter_count = (db_task.arbiter_count or 0) + 1
                         
                         # Update cost tracking
                         db_task.total_cost = (db_task.total_cost or 0.0) + decision.api_cost
                         db_task.total_input_tokens = (db_task.total_input_tokens or 0) + decision.input_tokens
                         db_task.total_output_tokens = (db_task.total_output_tokens or 0) + decision.output_tokens
                         db_task.total_reasoning_tokens = (db_task.total_reasoning_tokens or 0) + decision.reasoning_tokens
-                        
-                        db.commit()
+                    
+                    # Single commit for everything
+                    db.commit()
             except Exception as e:
-                logger.warning(f"⚠️ Failed to save screening result to database: {e}")
+                logger.warning(f"⚠️ Failed to update database in callback: {e}")
             
-            # Update cost and decision tracking in legacy dict (backward compatibility)
-            if task_id in screening_tasks:
+            # 4. Update memory (skipping DB update since we just did it)
+            try:
+                task_manager.update_progress(task_id, actual_completed, skip_db=True)
+            except Exception:
+                pass
+            
+            # Update legacy dict (backward compatibility)
                 current_cost = screening_tasks[task_id].get('current_cost', 0.0)
                 screening_tasks[task_id]['current_cost'] = current_cost + decision.api_cost
                 
@@ -939,6 +961,8 @@ def _map_decision(decision: str) -> ScreeningDecision:
         return ScreeningDecision.INCLUDE
     elif decision == "Irrelevant":
         return ScreeningDecision.EXCLUDE
+    elif decision == "Needs Full Text":
+        return ScreeningDecision.NEEDS_FULL_TEXT
     else:
         return ScreeningDecision.MANUAL_REVIEW
 
@@ -949,15 +973,18 @@ def _map_db_decision_to_api(db_decision: DBScreeningDecision) -> ScreeningDecisi
         return ScreeningDecision.INCLUDE
     elif db_decision == DBScreeningDecision.EXCLUDE:
         return ScreeningDecision.EXCLUDE
+    elif db_decision == DBScreeningDecision.NEEDS_FULL_TEXT:
+        return ScreeningDecision.NEEDS_FULL_TEXT
     else:
         return ScreeningDecision.MANUAL_REVIEW
 
 
 def _map_api_decision_to_db(api_decision: str) -> DBScreeningDecision:
     """Map API decision string to database ScreeningDecision enum"""
-    if api_decision == "Relevant":
-        return DBScreeningDecision.INCLUDE
-    elif api_decision == "Irrelevant":
-        return DBScreeningDecision.EXCLUDE
-    else:
-        return DBScreeningDecision.MANUAL_REVIEW
+    mapping = {
+        "Relevant": DBScreeningDecision.INCLUDE,
+        "Irrelevant": DBScreeningDecision.EXCLUDE,
+        "Needs Full Text": DBScreeningDecision.NEEDS_FULL_TEXT,
+        "Uncertain": DBScreeningDecision.NEEDS_FULL_TEXT,  # Map Uncertain to Full Text
+    }
+    return mapping.get(api_decision, DBScreeningDecision.MANUAL_REVIEW)

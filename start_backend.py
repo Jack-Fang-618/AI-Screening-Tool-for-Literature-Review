@@ -25,13 +25,16 @@ def main():
     # Get project root
     project_root = Path(__file__).parent
     
+    # Get port from environment or default to 8000
+    port = int(os.environ.get("PORT", 8000))
+    
     uvicorn.run(
         "backend.main:app",
         host="0.0.0.0",
-        port=8000,
-        reload=True,  # Auto-reload on code changes (development only)
-        reload_dirs=[str(project_root / "backend"), str(project_root / "shared")],  # Only watch these dirs
-        reload_excludes=["*.pyc", "__pycache__/**"],  # Also exclude compiled files
+        port=port,
+        reload=False if os.environ.get("QUIET_MODE") == "1" else True,  # Disable reload in quiet/prod mode
+        reload_dirs=[str(project_root / "backend"), str(project_root / "shared")] if os.environ.get("QUIET_MODE") != "1" else [],
+        reload_excludes=["*.pyc", "__pycache__/**"],
         log_level="info" if os.environ.get("QUIET_MODE") != "1" else "error"
     )
 

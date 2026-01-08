@@ -19,9 +19,19 @@ def main():
     print("\n" + "═" * 50)
     print(" 🔬 PRISMA-ScR Toolkit - Full Stack Launcher")
     print("═" * 50)
-    print(" 📡 Backend:   http://localhost:8000")
-    print(" 🎨 Frontend:  http://localhost:8501")
-    print(" 📚 API Docs:  http://localhost:8000/docs")
+    
+    # Port configuration
+    backend_port = 8000
+    frontend_port = os.environ.get("PORT", "8501")
+    
+    # Ensure Backend URL is set for the frontend if not already set
+    if "BACKEND_URL" not in os.environ:
+        os.environ["BACKEND_URL"] = f"http://localhost:{backend_port}"
+        print(f" 🔗 Backend URL: {os.environ['BACKEND_URL']}")
+    
+    print(f" 📡 Backend Internal: http://localhost:{backend_port}")
+    print(f" 🎨 Frontend Public:   http://localhost:{frontend_port}")
+    print(f" 📚 API Docs:          http://localhost:{backend_port}/docs")
     print("═" * 50)
     print("\n🚀 Initializing services...")
     
@@ -29,17 +39,18 @@ def main():
     
     try:
         # Start backend
-        print("➔ Starting FastAPI Backend...", end=" ", flush=True)
+        print(f"➔ Starting FastAPI Backend on port {backend_port}...", end=" ", flush=True)
+        # We use host 127.0.0.1 for internal communication if possible, or 0.0.0.0
         backend_process = subprocess.Popen([
             sys.executable,
             "start_backend.py"
-        ])
+        ], env={**os.environ, "PORT": str(backend_port)}) # Force backend to 8000
         processes.append(backend_process)
-        time.sleep(2)
+        time.sleep(3) # Give it more time to start
         print("✅ Done")
         
         # Start frontend
-        print("➔ Starting Streamlit Frontend...", end=" ", flush=True)
+        print(f"➔ Starting Streamlit Frontend on port {frontend_port}...", end=" ", flush=True)
         frontend_process = subprocess.Popen([
             sys.executable,
             "start_frontend.py"

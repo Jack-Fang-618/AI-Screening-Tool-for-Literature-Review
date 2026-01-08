@@ -408,7 +408,8 @@ class APIClient:
         num_workers: int = 8,
         confidence_threshold: float = 0.8,
         manual_review_threshold: float = 0.6,
-        limit: Optional[int] = None
+        limit: Optional[int] = None,
+        strategy: str = "single"
     ) -> Dict:
         """Start AI screening task"""
         import streamlit as st
@@ -419,7 +420,8 @@ class APIClient:
             'model': model,
             'num_workers': num_workers,
             'confidence_threshold': confidence_threshold,
-            'manual_review_threshold': manual_review_threshold
+            'manual_review_threshold': manual_review_threshold,
+            'strategy': strategy
         }
         
         # Add limit if provided (for test mode)
