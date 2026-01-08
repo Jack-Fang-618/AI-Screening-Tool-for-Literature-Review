@@ -39,26 +39,29 @@ def main():
     
     try:
         # Start backend
-        print(f"➔ Starting FastAPI Backend on port {backend_port}...", end=" ", flush=True)
-        # We use host 127.0.0.1 for internal communication if possible, or 0.0.0.0
+        print(f"➔ Starting FastAPI Backend on port {backend_port}...", flush=True)
+        # Use child environment to ensure logs are flushed
+        backend_env = {**os.environ, "PORT": str(backend_port), "PYTHONUNBUFFERED": "1"}
         backend_process = subprocess.Popen([
             sys.executable,
             "start_backend.py"
-        ], env={**os.environ, "PORT": str(backend_port)}) # Force backend to 8000
+        ], env=backend_env) 
         processes.append(backend_process)
-        time.sleep(3) # Give it more time to start
-        print("✅ Done")
+        
+        # Give backend more time to warm up
+        print("⏳ Waiting for backend to initialize (5s)...", flush=True)
+        time.sleep(5) 
         
         # Start frontend
-        print(f"➔ Starting Streamlit Frontend on port {frontend_port}...", end=" ", flush=True)
+        print(f"➔ Starting Streamlit Frontend on port {frontend_port}...", flush=True)
+        frontend_env = {**os.environ, "PYTHONUNBUFFERED": "1"}
         frontend_process = subprocess.Popen([
             sys.executable,
             "start_frontend.py"
-        ])
+        ], env=frontend_env)
         processes.append(frontend_process)
-        print("✅ Done")
         
-        print("\n✨ All services are running! Press Ctrl+C to stop.")
+        print("\n✨ All services are running!", flush=True)
         print("─" * 50 + "\n")
         
         # Keep running until interrupted
