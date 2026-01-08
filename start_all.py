@@ -26,12 +26,13 @@ def main():
     
     # Ensure Backend URL is set for the frontend if not already set
     if "BACKEND_URL" not in os.environ:
-        os.environ["BACKEND_URL"] = f"http://localhost:{backend_port}"
+        # Use 127.0.0.1 instead of localhost for better compatibility in containers
+        os.environ["BACKEND_URL"] = f"http://127.0.0.1:{backend_port}"
         print(f" 🔗 Backend URL: {os.environ['BACKEND_URL']}")
     
-    print(f" 📡 Backend Internal: http://localhost:{backend_port}")
-    print(f" 🎨 Frontend Public:   http://localhost:{frontend_port}")
-    print(f" 📚 API Docs:          http://localhost:{backend_port}/docs")
+    print(f" 📡 Backend Internal: http://127.0.0.1:{backend_port}")
+    print(f" 🎨 Frontend Public:   http://0.0.0.0:{frontend_port}")
+    print(f" 📚 API Docs:          http://127.0.0.1:{backend_port}/docs")
     print("═" * 50)
     print("\n🚀 Initializing services...")
     
@@ -40,17 +41,17 @@ def main():
     try:
         # Start backend
         print(f"➔ Starting FastAPI Backend on port {backend_port}...", flush=True)
-        # Use child environment to ensure logs are flushed
+        # Use child environment and pipe output to current stdout/stderr
         backend_env = {**os.environ, "PORT": str(backend_port), "PYTHONUNBUFFERED": "1"}
         backend_process = subprocess.Popen([
             sys.executable,
             "start_backend.py"
-        ], env=backend_env) 
+        ], env=backend_env, stdout=None, stderr=None) # Passing None keeps it in the same output
         processes.append(backend_process)
         
         # Give backend more time to warm up
-        print("⏳ Waiting for backend to initialize (5s)...", flush=True)
-        time.sleep(5) 
+        print("⏳ Waiting for backend to initialize (7s)...", flush=True)
+        time.sleep(7) 
         
         # Start frontend
         print(f"➔ Starting Streamlit Frontend on port {frontend_port}...", flush=True)
@@ -58,7 +59,7 @@ def main():
         frontend_process = subprocess.Popen([
             sys.executable,
             "start_frontend.py"
-        ], env=frontend_env)
+        ], env=frontend_env, stdout=None, stderr=None)
         processes.append(frontend_process)
         
         print("\n✨ All services are running!", flush=True)
