@@ -98,7 +98,7 @@ def main():
         - Clean and standardize
         """)
         if st.button("Start Data Management", type="primary", width="stretch"):
-            st.switch_page("pages/1_Data_Management.py")
+            st.switch_page("../pages/1_Data_Management.py")
     
     with col2:
         st.markdown("### 2️⃣ AI Screening")
@@ -109,7 +109,7 @@ def main():
         - Real-time progress
         """)
         if st.button("Start AI Screening", type="primary", width="stretch"):
-            st.switch_page("pages/2_AI_Screening.py")
+            st.switch_page("../pages/2_AI_Screening.py")
     
     with col3:
         st.markdown("### 3️⃣ Results")
@@ -120,7 +120,7 @@ def main():
         - Analyze statistics
         """)
         if st.button("View Results", type="primary", width="stretch"):
-            st.switch_page("pages/3_Results.py")
+            st.switch_page("../pages/3_Results.py")
     
     with col4:
         st.markdown("### ⚙️ Settings")
@@ -131,7 +131,7 @@ def main():
         - Save templates
         """)
         if st.button("Open Settings", type="secondary", width="stretch"):
-            st.switch_page("pages/4_Settings.py")
+            st.switch_page("../pages/4_Settings.py")
     
     st.markdown("---")
     

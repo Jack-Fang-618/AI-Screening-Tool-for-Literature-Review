@@ -200,10 +200,10 @@ def main():
     - 📄 PRISMA-compliant export
     """)
     
-    # Quick Start Section
+    # Quick Start Guide
     st.markdown("## Quick Start Guide")
     
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
     
     with col1:
         st.markdown("### 1️⃣ Data Management")
@@ -237,6 +237,17 @@ def main():
         """)
         if st.button("View Results", type="primary", use_container_width=True):
             st.switch_page("pages/3_Results.py")
+
+    with col4:
+        st.markdown("### ⚙️ Settings")
+        st.markdown("""
+        - Configure API keys
+        - Set default criteria
+        - Manage preferences
+        - Save templates
+        """)
+        if st.button("Open Settings", type="secondary", use_container_width=True):
+            st.switch_page("pages/4_Settings.py")
     
     st.markdown("---")
     
