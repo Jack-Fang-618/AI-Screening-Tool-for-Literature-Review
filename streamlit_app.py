@@ -30,11 +30,12 @@ try:
         print(f"🔗 Backend URL (from Streamlit secrets): {BACKEND_URL}")
 except (FileNotFoundError, KeyError):
     # Fall back to environment variable or default
-    BACKEND_URL = os.getenv('BACKEND_URL', 'http://localhost:8000')
+    # Use 127.0.0.1 default for better container compatibility
+    BACKEND_URL = os.getenv('BACKEND_URL', 'http://127.0.0.1:8000')
     print(f"🔗 Backend URL (from environment): {BACKEND_URL}")
 
 if not BACKEND_URL:
-    BACKEND_URL = 'http://localhost:8000'
+    BACKEND_URL = 'http://127.0.0.1:8000'
     print(f"🔗 Backend URL (default): {BACKEND_URL}")
 
 # ===== Import Frontend Components =====
