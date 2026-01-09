@@ -3,6 +3,6 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "start_command": "python start_all.py"
+    "startCommand": "python start_all.py"
   }
 }
